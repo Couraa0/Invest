@@ -44,7 +44,7 @@ export default function Landing() {
           <div className="flex items-center gap-12">
             <Link to="/" className="flex items-center gap-2 group">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform overflow-hidden">
-                <img src="/src/public/logo.svg" alt="Logo" className="w-6 h-6" />
+                <img src="/logo.svg" alt="Logo" className="w-6 h-6" />
               </div>
               <span className="text-2xl font-black text-primary tracking-tighter">InvestAI</span>
             </Link>
@@ -276,7 +276,7 @@ export default function Landing() {
           <div className="md:col-span-5">
             <Link to="/" className="flex items-center gap-2 mb-6 group">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform overflow-hidden">
-                <img src="/src/public/logo.svg" alt="Logo" className="w-6 h-6" />
+                <img src="/logo.svg" alt="Logo" className="w-6 h-6" />
               </div>
               <span className="text-2xl font-black text-primary tracking-tighter">InvestAI</span>
             </Link>

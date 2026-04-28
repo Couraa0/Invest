@@ -1,10 +1,10 @@
-import { 
-  Plus, 
-  LayoutDashboard, 
-  BookOpen, 
-  Zap, 
-  LineChart, 
-  MessageSquare, 
+import {
+  Plus,
+  LayoutDashboard,
+  BookOpen,
+  Zap,
+  LineChart,
+  MessageSquare,
   Settings,
   ArrowUpRight,
   Sparkles
@@ -57,8 +57,8 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               onClick={onClose}
               className={({ isActive }) => cn(
                 "flex items-center gap-3 mx-2 px-4 py-3 rounded-full transition-all duration-200 font-medium",
-                isActive 
-                  ? "bg-primary text-white shadow-lg shadow-primary/20" 
+                isActive
+                  ? "bg-primary text-white shadow-lg shadow-primary/20"
                   : "text-on-surface-variant hover:bg-white/50 hover:text-primary"
               )}
             >
@@ -75,7 +75,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             </div>
             <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-2">Pro Member</p>
             <p className="text-sm font-bold text-primary mb-4">Dapatkan akses ke sinyal AI eksklusif.</p>
-            <button 
+            <button
               onClick={handleUpgrade}
               className="w-full py-3 bg-secondary text-white rounded-xl text-xs font-black shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all"
             >
@@ -88,7 +88,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Coming Soon Notification */}
       <AnimatePresence>
         {showNotification && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 20, x: '-50%' }}

@@ -1,8 +1,12 @@
-import { Search, Bell, Menu, LayoutDashboard, BookOpen, Zap, LineChart, MessageSquare, Settings, TrendingUp } from 'lucide-react';
-import { useLocation, Link } from 'react-router-dom';
+import { Search, Bell, Menu, LayoutDashboard, BookOpen, Zap, LineChart, MessageSquare, Settings, TrendingUp, LogOut } from 'lucide-react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   
   const getPageInfo = () => {
     const path = location.pathname;
@@ -17,6 +21,11 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
   };
 
   const { title, icon: Icon } = getPageInfo();
+
+  const handleLogout = () => {
+    navigate('/');
+    setDropdownOpen(false);
+  };
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-72 h-20 flex items-center justify-between px-6 md:px-12 bg-white/70 backdrop-blur-lg border-b border-white/30 z-30">
@@ -47,18 +56,59 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
           <span className="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-white animate-pulse"></span>
         </button>
         
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:block text-right">
-            <p className="text-xs font-bold text-primary">Investor Pemula</p>
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Beginner Level 2</p>
+        <div className="relative">
+          <div 
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-3 cursor-pointer group hover:bg-white/50 p-1.5 -m-1.5 rounded-full transition-all"
+          >
+            <div className="hidden sm:block text-right">
+              <p className="text-xs font-bold text-primary">Investor Pemula</p>
+              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Beginner Level 2</p>
+            </div>
+            <div className="w-10 h-10 rounded-full border-2 border-white shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
+              <img 
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJNDn9tNW7r8eHm_SzPyiz195oTRN2TBCM085ZSwfJCxBkH9fOhy_Ak6v70xpYyYkkDdiAlfEdz-NmEvkEWvbEif5nqrHUbwqn7Kw475IOVbTAgtdFYBtNQWprLUEnjnzg1jNXjZKHvpOMqyFUdDOyqktbuCG37XhWbS86GovntTIeMF96wUrtOtPDaSybwhV71Kbh82o-399Jz5fDVjt2M7ghLRPeQZFWMM1HTuDWqhsrS3DrI1j78ZyaDDZwC9yjRZHhH4yZA_Q" 
+                alt="User profile"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
-          <Link to="/settings" className="w-10 h-10 rounded-full border-2 border-white shadow-sm overflow-hidden cursor-pointer hover:scale-105 transition-transform">
-            <img 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJNDn9tNW7r8eHm_SzPyiz195oTRN2TBCM085ZSwfJCxBkH9fOhy_Ak6v70xpYyYkkDdiAlfEdz-NmEvkEWvbEif5nqrHUbwqn7Kw475IOVbTAgtdFYBtNQWprLUEnjnzg1jNXjZKHvpOMqyFUdDOyqktbuCG37XhWbS86GovntTIeMF96wUrtOtPDaSybwhV71Kbh82o-399Jz5fDVjt2M7ghLRPeQZFWMM1HTuDWqhsrS3DrI1j78ZyaDDZwC9yjRZHhH4yZA_Q" 
-              alt="User profile"
-              className="w-full h-full object-cover"
-            />
-          </Link>
+
+          {/* Profile Dropdown */}
+          <AnimatePresence>
+            {dropdownOpen && (
+              <>
+                {/* Backdrop to close on click outside */}
+                <div 
+                  className="fixed inset-0 z-[-1]" 
+                  onClick={() => setDropdownOpen(false)}
+                />
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 15, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-full right-0 z-50 w-56 glass-card bg-white/90 backdrop-blur-2xl rounded-xl border-white/60 shadow-2xl overflow-hidden p-1.5"
+                >
+                  <Link 
+                    to="/settings" 
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/5 text-primary transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="text-xs font-black">Settings</span>
+                  </Link>
+                  <div className="h-px bg-slate-100 my-1 mx-2" />
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-xs font-black">Logout</span>
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>
