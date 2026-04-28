@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
+import StockIcon from '../components/StockIcon';
 
 const stocks = [
   { symbol: 'BBCA', name: 'PT Bank Central Asia Tbk.', price: '10.250', change: '+1.25%', color: 'text-secondary' },
@@ -89,9 +90,7 @@ export default function Signals() {
                 <div key={stock.symbol} className="glass-card p-6 rounded-[2rem] group hover:shadow-2xl hover:shadow-primary/5 transition-all border-white/40">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-black text-primary text-sm border border-slate-100 shadow-sm">
-                        {stock.symbol}
-                      </div>
+                      <StockIcon symbol={stock.symbol} />
                       <div>
                         <h3 className="font-bold text-primary">{stock.symbol}</h3>
                         <p className="text-[10px] text-on-surface-variant/60 font-bold uppercase tracking-widest truncate max-w-[120px]">{stock.name}</p>
@@ -144,9 +143,7 @@ export default function Signals() {
             <div className="glass-card p-8 rounded-[2.5rem] border-white/40 shadow-xl">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
                 <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 bg-white rounded-[1.5rem] flex items-center justify-center text-primary shadow-sm border border-slate-100">
-                    <BarChart3 className="w-8 h-8" />
-                  </div>
+                  <StockIcon symbol={selectedStock?.symbol || ''} className="w-16 h-16 text-xl" />
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <h2 className="text-3xl font-black text-primary tracking-tighter">{selectedStock?.symbol}</h2>

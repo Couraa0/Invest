@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import StockIcon from '../components/StockIcon';
 import { 
   AreaChart, 
   Area, 
@@ -183,9 +184,7 @@ export default function Dashboard() {
                   <div className="glass-card p-8 rounded-[2rem] hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300">
                     <div className="flex justify-between items-start mb-8">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center border border-slate-100 font-bold text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                          {stock.symbol}
-                        </div>
+                        <StockIcon symbol={stock.symbol} />
                         <div>
                           <p className="font-bold text-primary">{stock.name}</p>
                           <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest">Finance</p>
