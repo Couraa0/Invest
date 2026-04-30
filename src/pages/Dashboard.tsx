@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { useUser } from '../context/UserContext';
 import StockIcon from '../components/StockIcon';
 import { 
   AreaChart, 
@@ -37,15 +38,37 @@ const watchlist = [
 ];
 
 export default function Dashboard() {
+  const { investorLevel } = useUser();
+
+  const profileMapping = {
+    'Pemula': {
+      label: 'Investor Pemula',
+      badge: 'Pemula',
+      risk: 'Aman & Terukur'
+    },
+    'Menengah': {
+      label: 'Investor Menengah',
+      badge: 'Menengah',
+      risk: 'Moderat & Bertumbuh'
+    },
+    'Berpengalaman': {
+      label: 'Investor Berpengalaman',
+      badge: 'Berpengalaman',
+      risk: 'Agresif & Dinamis'
+    }
+  };
+
+  const currentProfile = profileMapping[investorLevel];
+
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Greeting Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-bold text-primary tracking-tight">Halo, Investor Pemula 👋</h1>
+            <h1 className="text-4xl font-bold text-primary tracking-tight">Halo, {currentProfile.label} 👋</h1>
             <span className="bg-secondary-container text-on-secondary-container text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border border-secondary/20">
-              Pemula
+              {currentProfile.badge}
             </span>
           </div>
           <p className="text-on-surface-variant">Strategi investasi kamu terlihat stabil hari ini. Mari cek performa portofolio simulasi.</p>
@@ -77,7 +100,7 @@ export default function Dashboard() {
             <div className="md:w-2/3 space-y-4">
               <p className="text-xl text-on-surface leading-relaxed">
                 IHSG terpantau menguat tipis seiring sentimen positif dari rilis data inflasi. 
-                Untuk profil <span className="font-bold text-secondary">Aman & Terukur</span> Anda, 
+                Untuk profil <span className="font-bold text-secondary">{currentProfile.risk}</span> Anda, 
                 emiten perbankan besar masih menjadi jangkar portofolio yang ideal.
               </p>
               <p className="text-on-surface-variant leading-relaxed">

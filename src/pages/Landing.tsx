@@ -13,8 +13,11 @@ import {
   Globe
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import InvestorLevelModal from '../components/InvestorLevelModal';
+import { useState } from 'react';
 
 export default function Landing() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -51,12 +54,12 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-4">
             <button className="hidden sm:block text-sm font-bold text-primary px-4 py-2 hover:bg-primary/5 rounded-full transition-colors">Login</button>
-            <Link 
-              to="/dashboard"
+            <button 
+              onClick={() => setIsModalOpen(true)}
               className="bg-primary text-white px-8 py-3.5 rounded-full text-sm font-black shadow-2xl shadow-primary/30 hover:scale-[1.05] hover:shadow-primary/40 active:scale-95 transition-all"
             >
               Coba Sekarang
-            </Link>
+            </button>
           </div>
         </div>
       </nav>
@@ -87,12 +90,12 @@ export default function Landing() {
               Keputusan tepat, hasil maksimal, untuk masa depan finansial Anda.
             </p>
             <div className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start">
-              <Link
-                to="/dashboard"
+              <button
+                onClick={() => setIsModalOpen(true)}
                 className="group bg-primary text-white px-10 py-5 rounded-[2rem] text-lg font-black shadow-2xl shadow-primary/40 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
               >
                 Mulai Investasi <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-              </Link>
+              </button>
               <Link 
                 to="/simulator"
                 className="bg-white text-primary border-2 border-primary/10 px-10 py-5 rounded-[2rem] text-lg font-black hover:bg-primary/5 transition-all flex items-center justify-center gap-3"
@@ -333,6 +336,7 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      <InvestorLevelModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

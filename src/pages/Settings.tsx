@@ -2,9 +2,17 @@ import { User, Bell, Shield, Wallet, ChevronRight, LogOut, Camera, Zap, HelpCirc
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
+import { useUser } from '../context/UserContext';
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { investorLevel } = useUser();
+
+  const labels = {
+    'Pemula': 'Investor Pemula',
+    'Menengah': 'Investor Menengah',
+    'Berpengalaman': 'Investor Berpengalaman'
+  };
   
   const sections = [
     { icon: User, label: 'Profil Pengguna', desc: 'Kelola informasi pribadi dan preferensi akun Anda.', color: 'text-primary' },
@@ -59,7 +67,7 @@ export default function Settings() {
               
               <div className="flex-1 pb-2">
                 <div className="flex items-center gap-3 mb-2">
-                   <h2 className="text-3xl font-black text-primary tracking-tight">Investor Pemula</h2>
+                    <h2 className="text-3xl font-black text-primary tracking-tight">{labels[investorLevel]}</h2>
                    <div className="px-3 py-1 bg-primary text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-primary/20 flex items-center gap-1.5">
                      <Zap className="w-3 h-3 fill-current" /> Pro Member
                    </div>

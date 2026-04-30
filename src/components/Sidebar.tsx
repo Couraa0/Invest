@@ -12,6 +12,7 @@ import {
 import { NavLink } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useState } from 'react';
+import { useUser } from '../context/UserContext';
 import { motion, AnimatePresence } from 'motion/react';
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
 ];
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
+  const { investorLevel } = useUser();
   const [showNotification, setShowNotification] = useState(false);
 
   const handleUpgrade = () => {
@@ -41,7 +43,10 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             </div>
             <div>
               <p className="font-bold text-primary">InvestAI Pro</p>
-              <p className="text-xs text-on-surface-variant">Beginner Level 2</p>
+              <p className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest mt-0.5">
+                {investorLevel === 'Pemula' ? 'Beginner' : 
+                 investorLevel === 'Menengah' ? 'Intermediate' : 'Expert'}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden p-2 text-on-surface-variant">
