@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+*.log
+model_artifacts/*.h5
+model_artifacts/*.pkl
+model_artifacts/*.pt
+!model_artifacts/.gitkeep
+data/*
+!data/.gitkeep
