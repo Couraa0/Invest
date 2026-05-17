@@ -9,11 +9,12 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const navigate = useNavigate();
   const { investorLevel } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const profileInfo = {
-    'Pemula': { label: 'Investor Pemula', level: 'Beginner' },
-    'Menengah': { label: 'Investor Menengah', level: 'Intermediate' },
-    'Berpengalaman': { label: 'Investor Berpengalaman', level: 'Expert' }
+    'Pemula': { label: 'Investor Pemula', level: 'Beginner', initials: 'IP' },
+    'Menengah': { label: 'Investor Menengah', level: 'Intermediate', initials: 'IM' },
+    'Berpengalaman': { label: 'Investor Berpengalaman', level: 'Expert', initials: 'IB' }
   };
 
   const currentProfile = profileInfo[investorLevel];
@@ -38,82 +39,89 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
   };
 
   return (
-    <header className="fixed top-0 right-0 left-0 lg:left-72 h-20 flex items-center justify-between px-6 md:px-12 bg-white/70 backdrop-blur-lg border-b border-white/30 z-30">
-      <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="lg:hidden p-2 text-on-surface-variant hover:bg-slate-100 rounded-full transition-colors">
-          <Menu className="w-6 h-6" />
+    <header className="fixed top-0 right-0 left-0 lg:left-72 h-16 flex items-center justify-between px-5 md:px-8 bg-white/80 backdrop-blur-xl border-b border-slate-100/80 z-30">
+      {/* Left: Menu button + Page title */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 text-on-surface-variant hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <Menu className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary hidden sm:flex">
-            <Icon className="w-5 h-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center text-primary hidden sm:flex">
+            <Icon className="w-4 h-4" />
           </div>
-          <h2 className="text-xl font-bold text-primary">{title}</h2>
+          <h2 className="text-base font-bold text-primary tracking-tight">{title}</h2>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="hidden md:flex relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-          <input
-            type="text"
-            placeholder="Cari emiten, berita, atau modul..."
-            className="pl-11 pr-6 py-2.5 bg-surface-container-low border-none rounded-full w-64 lg:w-80 focus:ring-2 focus:ring-primary/10 text-sm"
-          />
-        </div>
+      {/* Center: Search */}
+      <div className={`hidden md:flex relative transition-all duration-300 ${searchFocused ? 'w-96' : 'w-72'}`}>
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
+        <input
+          type="text"
+          placeholder="Cari emiten, modul, atau berita..."
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          className="w-full pl-10 pr-4 py-2 bg-slate-50/80 border border-slate-100 rounded-xl text-sm text-primary font-medium placeholder:text-on-surface-variant/30 focus:ring-2 focus:ring-primary/10 focus:border-primary/20 focus:bg-white outline-none transition-all duration-200"
+        />
+      </div>
 
-        <button className="relative p-2.5 bg-white rounded-full border border-white/50 shadow-sm text-primary hover:scale-105 transition-transform">
+      {/* Right: Bell + Profile */}
+      <div className="flex items-center gap-2">
+        <button className="relative p-2 text-on-surface-variant hover:bg-slate-100 rounded-lg transition-colors">
           <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-white animate-pulse"></span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-secondary rounded-full border-2 border-white animate-pulse" />
         </button>
 
         <div className="relative">
-          <div
+          <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-3 cursor-pointer group hover:bg-white/50 p-1.5 -m-1.5 rounded-full transition-all"
+            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-100/80 transition-all duration-200 group"
           >
-            <div className="hidden sm:block text-right">
-              <p className="text-xs font-bold text-primary">{currentProfile.label}</p>
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">{currentProfile.level}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full border-2 border-white shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200/80 shadow-sm group-hover:border-primary/20 transition-colors">
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJNDn9tNW7r8eHm_SzPyiz195oTRN2TBCM085ZSwfJCxBkH9fOhy_Ak6v70xpYyYkkDdiAlfEdz-NmEvkEWvbEif5nqrHUbwqn7Kw475IOVbTAgtdFYBtNQWprLUEnjnzg1jNXjZKHvpOMqyFUdDOyqktbuCG37XhWbS86GovntTIeMF96wUrtOtPDaSybwhV71Kbh82o-399Jz5fDVjt2M7ghLRPeQZFWMM1HTuDWqhsrS3DrI1j78ZyaDDZwC9yjRZHhH4yZA_Q"
                 alt="User profile"
                 className="w-full h-full object-cover"
               />
             </div>
-          </div>
+            <div className="hidden sm:block text-left">
+              <p className="text-xs font-bold text-primary leading-tight">{currentProfile.label}</p>
+              <p className="text-[9px] font-semibold text-on-surface-variant/50 uppercase tracking-wider">{currentProfile.level}</p>
+            </div>
+          </button>
 
-          {/* Profile Dropdown */}
           <AnimatePresence>
             {dropdownOpen && (
               <>
-                {/* Backdrop to close on click outside */}
-                <div
-                  className="fixed inset-0 z-[-1]"
-                  onClick={() => setDropdownOpen(false)}
-                />
+                <div className="fixed inset-0 z-[48]" onClick={() => setDropdownOpen(false)} />
                 <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 15, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-full right-0 z-50 w-56 glass-card bg-white/90 backdrop-blur-2xl rounded-xl border-white/60 shadow-2xl overflow-hidden p-1.5"
+                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 12, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full right-0 z-50 w-52 bg-white rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/60 overflow-hidden p-1.5"
                 >
+                  <div className="px-3 py-2 mb-1 border-b border-slate-100">
+                    <p className="text-xs font-bold text-primary">{currentProfile.label}</p>
+                    <p className="text-[10px] text-on-surface-variant/50 font-medium">{currentProfile.level}</p>
+                  </div>
                   <Link
                     to="/settings"
                     onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/5 text-primary transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-50 text-on-surface transition-colors text-sm font-medium"
                   >
-                    <Settings className="w-4 h-4" />
-                    <span className="text-xs font-black">Settings</span>
+                    <Settings className="w-4 h-4 text-on-surface-variant" />
+                    Settings
                   </Link>
-                  <div className="h-px bg-slate-100 my-1 mx-2" />
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors text-sm font-medium"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span className="text-xs font-black">Logout</span>
+                    Logout
                   </button>
                 </motion.div>
               </>

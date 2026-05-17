@@ -5,7 +5,12 @@ import {
   Navigate 
 } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
+import Features from './pages/Features';
+import Pricing from './pages/Pricing';
+import Login from './pages/Login';
+import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import StockDetail from './pages/StockDetail';
 import Academy from './pages/Academy';
@@ -20,8 +25,13 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/features" element={<Features />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         
-        <Route element={<AppLayout />}>
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/stock/:symbol" element={<StockDetail />} />
           <Route path="/academy" element={<Academy />} />
@@ -32,6 +42,7 @@ export default function App() {
           
           {/* Catch all to dashboard for now */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

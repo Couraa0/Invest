@@ -6,7 +6,11 @@ import {
   TrendingUp, 
   Landmark, 
   ChevronRight,
-  TrendingDown
+  TrendingDown,
+  Sparkles,
+  Activity,
+  ArrowUpRight,
+  BarChart2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -37,222 +41,234 @@ const watchlist = [
   { symbol: 'ASII', name: 'Astra International', price: '5,125', change: '+75 (1.48%)', status: 'BUY', confidence: 78, type: 'up' },
 ];
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.08, duration: 0.4, ease: 'easeOut' } }),
+};
+
 export default function Dashboard() {
   const { investorLevel } = useUser();
 
   const profileMapping = {
-    'Pemula': {
-      label: 'Investor Pemula',
-      badge: 'Pemula',
-      risk: 'Aman & Terukur'
-    },
-    'Menengah': {
-      label: 'Investor Menengah',
-      badge: 'Menengah',
-      risk: 'Moderat & Bertumbuh'
-    },
-    'Berpengalaman': {
-      label: 'Investor Berpengalaman',
-      badge: 'Berpengalaman',
-      risk: 'Agresif & Dinamis'
-    }
+    'Pemula': { label: 'Investor Pemula', badge: 'Pemula', risk: 'Aman & Terukur', emoji: '🌱' },
+    'Menengah': { label: 'Investor Menengah', badge: 'Menengah', risk: 'Moderat & Bertumbuh', emoji: '📈' },
+    'Berpengalaman': { label: 'Investor Berpengalaman', badge: 'Berpengalaman', risk: 'Agresif & Dinamis', emoji: '🚀' }
   };
 
   const currentProfile = profileMapping[investorLevel];
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Greeting Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+      >
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-4xl font-bold text-primary tracking-tight">Halo, {currentProfile.label} 👋</h1>
-            <span className="bg-secondary-container text-on-secondary-container text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full border border-secondary/20">
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-primary tracking-tight">Selamat Datang {currentProfile.emoji}</h1>
+            <span className="px-2.5 py-0.5 bg-primary/8 text-primary text-[10px] font-semibold uppercase tracking-wider rounded-full border border-primary/12">
               {currentProfile.badge}
             </span>
           </div>
-          <p className="text-on-surface-variant">Strategi investasi kamu terlihat stabil hari ini. Mari cek performa portofolio simulasi.</p>
+          <p className="text-sm text-on-surface-variant/60">Strategi investasimu terlihat stabil hari ini.</p>
         </div>
-        
-        <div className="glass-card px-6 py-3 rounded-2xl flex items-center gap-3 border-secondary/30">
-          <div className="w-2 h-2 rounded-full bg-secondary animate-pulse"></div>
-          <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">IDX OPEN</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-secondary/8 rounded-xl border border-secondary/12">
+          <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+          <span className="text-[11px] font-semibold text-secondary uppercase tracking-wider">IDX Open</span>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Bento Grid Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* AI Insight Narrative (Bento Large) */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-8 glass-card p-8 rounded-[2rem] border-primary/5"
+      {/* Main Bento Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* AI Insight - Large Card */}
+        <motion.section
+          custom={0} variants={fadeUp} initial="hidden" animate="visible"
+          className="lg:col-span-8 card p-6 rounded-2xl"
         >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3 text-primary">
-              <Brain className="w-6 h-6" />
-              <h2 className="text-xl font-bold">AI Insight Summary</h2>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Brain className="w-4 h-4 text-primary" />
+              </div>
+              <h2 className="font-semibold text-primary text-sm">AI Insight Summary</h2>
             </div>
-            <span className="text-xs text-on-surface-variant">Diperbarui 5m yang lalu</span>
+            <span className="text-[10px] text-on-surface-variant/40 font-medium">Diperbarui 5m lalu</span>
           </div>
-          
-          <div className="flex flex-col md:flex-row gap-10">
-            <div className="md:w-2/3 space-y-4">
-              <p className="text-xl text-on-surface leading-relaxed">
-                IHSG terpantau menguat tipis seiring sentimen positif dari rilis data inflasi. 
-                Untuk profil <span className="font-bold text-secondary">{currentProfile.risk}</span> Anda, 
+
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="md:w-2/3 space-y-3">
+              <p className="text-base text-on-surface leading-relaxed">
+                IHSG terpantau menguat tipis seiring sentimen positif dari data inflasi.
+                Untuk profil <span className="font-semibold text-secondary">{currentProfile.risk}</span> Anda,
                 emiten perbankan besar masih menjadi jangkar portofolio yang ideal.
               </p>
-              <p className="text-on-surface-variant leading-relaxed">
-                Analisis AI mendeteksi volume akumulasi yang tidak biasa pada sektor energi. 
-                Kami menyarankan untuk tetap pada rencana <span className="italic">Hold</span> untuk 
-                BBCA dan mulai memantau TLKM untuk peluang entry jangka menengah.
+              <p className="text-sm text-on-surface-variant/60 leading-relaxed">
+                Analisis AI mendeteksi volume akumulasi pada sektor energi. Kami menyarankan
+                <em> Hold</em> untuk BBCA dan mulai memantau TLKM untuk peluang entry jangka menengah.
               </p>
+              <Link
+                to="/signals"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:gap-2.5 transition-all duration-200"
+              >
+                Lihat sinyal lengkap <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
-            
-            <div className="md:w-1/3 glass-card bg-primary/5 p-6 rounded-2xl border-primary/10 flex flex-col justify-center text-center">
-              <p className="text-[10px] text-primary uppercase font-bold mb-4 tracking-widest">Sentimen Pasar</p>
-              {/* Simple Chart Bar mockup */}
-              <div className="flex items-end justify-center gap-1.5 h-20 mb-4">
-                <div className="h-8 w-2.5 bg-secondary rounded-full opacity-30"></div>
-                <div className="h-12 w-2.5 bg-secondary rounded-full opacity-50"></div>
-                <div className="h-16 w-2.5 bg-secondary rounded-full"></div>
-                <div className="h-20 w-2.5 bg-secondary rounded-full"></div>
-                <div className="h-14 w-2.5 bg-slate-300 rounded-full"></div>
-              </div>
-              <p className="text-2xl font-bold text-secondary">Bullish</p>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Confidence: 88%</p>
-            </div>
-          </div>
-        </motion.section>
 
-        {/* Market Overview (Bento Tall) */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:col-span-4 glass-card p-8 rounded-[2rem] overflow-hidden relative"
-        >
-          <div className="relative z-10 h-full flex flex-col">
-            <h3 className="text-[10px] text-primary uppercase font-bold tracking-widest mb-8">Simplified IDX</h3>
-            
-            <div className="space-y-10 flex-1">
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-2xl font-bold text-primary">IHSG</span>
-                  <span className="text-secondary font-bold text-lg">+0.42%</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: '65%' }}
-                    className="bg-secondary h-full"
+            <div className="md:w-1/3 bg-secondary/5 border border-secondary/10 rounded-xl p-5 flex flex-col items-center justify-center text-center">
+              <p className="stat-label mb-3">Sentimen Pasar</p>
+              <div className="flex items-end justify-center gap-1 h-14 mb-3">
+                {[30, 50, 65, 80, 60].map((h, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${h}%` }}
+                    transition={{ delay: i * 0.1 + 0.3, duration: 0.5, ease: 'easeOut' }}
+                    className={cn("w-3 rounded-t-sm", i === 3 ? "bg-secondary" : "bg-secondary/30")}
+                    style={{ height: `${h}%` }}
                   />
-                </div>
-                <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest mt-3">7,164.50 • 2.1T Volume</p>
+                ))}
               </div>
-
-              <div className="pt-6 border-t border-slate-100">
-                <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest mb-6">Top Sector</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-primary shadow-sm border border-white">
-                      <Landmark className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-primary">Finance</p>
-                      <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Sektor Utama</p>
-                    </div>
-                  </div>
-                  <span className="text-secondary font-bold text-lg">+1.2%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="h-24 mt-8 opacity-50 relative -mx-8">
-               <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={data}>
-                    <defs>
-                      <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#006c49" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#006c49" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="value" stroke="#006c49" fillOpacity={1} fill="url(#colorVal)" strokeWidth={3} />
-                 </AreaChart>
-               </ResponsiveContainer>
+              <p className="text-xl font-bold text-secondary">Bullish</p>
+              <p className="stat-label mt-1">Confidence: 88%</p>
             </div>
           </div>
         </motion.section>
 
-        {/* Watchlist Section */}
+        {/* Market Overview */}
+        <motion.section
+          custom={1} variants={fadeUp} initial="hidden" animate="visible"
+          className="lg:col-span-4 card p-6 rounded-2xl overflow-hidden"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-on-surface-variant/40" />
+              <h3 className="stat-label">Simplified IDX</h3>
+            </div>
+            <span className="text-[10px] text-secondary font-semibold">Live</span>
+          </div>
+
+          <div className="mb-5">
+            <div className="flex justify-between items-baseline mb-2">
+              <span className="text-xl font-bold text-primary">IHSG</span>
+              <span className="text-secondary font-bold text-sm">+0.42%</span>
+            </div>
+            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: '65%' }}
+                transition={{ duration: 1, delay: 0.3 }}
+                className="bg-secondary h-full rounded-full"
+              />
+            </div>
+            <p className="stat-label mt-2">7,164.50 · Vol 2.1T</p>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 mb-4">
+            <p className="stat-label mb-3">Top Sector</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary/8 flex items-center justify-center text-primary">
+                  <Landmark className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-primary">Finance</p>
+                  <p className="stat-label">Sektor Utama</p>
+                </div>
+              </div>
+              <span className="text-secondary font-bold text-sm">+1.2%</span>
+            </div>
+          </div>
+
+          {/* Mini Chart */}
+          <div className="h-16 -mx-2 opacity-70">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data}>
+                <defs>
+                  <linearGradient id="dashColorVal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#006c49" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#006c49" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area type="monotone" dataKey="value" stroke="#006c49" fillOpacity={1} fill="url(#dashColorVal)" strokeWidth={2} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.section>
+
+        {/* Watchlist */}
         <div className="lg:col-span-12">
-          <div className="flex items-center justify-between mb-8 px-2">
-            <h2 className="text-2xl font-bold text-primary tracking-tight">Watchlist Saham</h2>
-            <button className="text-primary text-[10px] font-bold flex items-center gap-1 hover:underline uppercase tracking-widest">
-              Lihat Semua <ChevronRight className="w-4 h-4" />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-primary">Watchlist Saham</h2>
+            <button className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/70 transition-colors">
+              Lihat Semua <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {watchlist.map((stock, idx) => (
-              <motion.div 
+              <motion.div
                 key={idx}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 + idx * 0.1 }}
-                className="group cursor-pointer"
+                custom={idx + 2} variants={fadeUp} initial="hidden" animate="visible"
               >
-                <Link to={`/stock/${stock.symbol}`} className="block">
-                  <div className="glass-card p-8 rounded-[2rem] hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300">
-                    <div className="flex justify-between items-start mb-8">
-                      <div className="flex items-center gap-4">
+                <Link to={`/stock/${stock.symbol}`} className="block group">
+                  <div className="card p-5 rounded-2xl hover:shadow-md hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200">
+                    {/* Stock Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
                         <StockIcon symbol={stock.symbol} />
                         <div>
-                          <p className="font-bold text-primary">{stock.name}</p>
-                          <p className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest">Finance</p>
+                          <p className="text-sm font-semibold text-primary">{stock.symbol}</p>
+                          <p className="stat-label max-w-[100px] truncate">{stock.name}</p>
                         </div>
                       </div>
-                      <div className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border",
-                        stock.status === 'BUY' ? "bg-secondary/10 text-secondary border-secondary/20" : "bg-slate-100 text-slate-500 border-slate-200"
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
+                        stock.status === 'BUY' ? "bg-secondary/10 text-secondary border border-secondary/15" : "bg-slate-100 text-slate-500 border border-slate-200"
                       )}>
                         {stock.status}
-                      </div>
+                      </span>
                     </div>
 
-                    <div className="flex items-end justify-between mb-6">
+                    {/* Price Row */}
+                    <div className="flex items-end justify-between mb-4">
                       <div>
-                        <p className="text-3xl font-bold text-primary">{stock.price}</p>
-                        <p className={cn(
-                          "font-bold text-sm",
-                          stock.type === 'up' ? "text-secondary" : "text-error"
-                        )}>{stock.change}</p>
+                        <p className="text-2xl font-bold text-primary tracking-tight">{stock.price}</p>
+                        <p className={cn("text-xs font-semibold mt-0.5 flex items-center gap-1", stock.type === 'up' ? "text-secondary" : "text-error")}>
+                          {stock.type === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {stock.change}
+                        </p>
                       </div>
-                      <div className="flex items-end gap-1 h-12 w-20">
-                        {[40, 60, 30, 80, 100].map((h, i) => (
-                          <div 
-                            key={i} 
+                      {/* Mini sparkline */}
+                      <div className="flex items-end gap-0.5 h-10">
+                        {[40, 60, 45, 80, 70, 100].map((h, i) => (
+                          <div
+                            key={i}
                             style={{ height: `${h}%` }}
                             className={cn(
-                              "w-full rounded-sm",
-                              stock.type === 'up' ? "bg-secondary shadow-[0_0_10px_rgba(16,185,129,0.3)]" : "bg-error opacity-50"
+                              "w-1.5 rounded-sm",
+                              stock.type === 'up' ? "bg-secondary/30" : "bg-error/25",
+                              i === 5 && (stock.type === 'up' ? "bg-secondary" : "bg-error")
                             )}
-                          ></div>
+                          />
                         ))}
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-[10px] font-bold">
-                        <span className="text-on-surface-variant/50 uppercase tracking-widest">AI Confidence</span>
-                        <span className="text-primary">{stock.confidence}%</span>
+                    {/* Confidence */}
+                    <div>
+                      <div className="flex justify-between mb-1.5">
+                        <span className="stat-label">AI Confidence</span>
+                        <span className="text-[10px] font-bold text-primary">{stock.confidence}%</span>
                       </div>
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                        <motion.div 
+                      <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                        <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${stock.confidence}%` }}
-                          className="bg-primary h-full"
+                          transition={{ duration: 1, delay: 0.4 + idx * 0.15 }}
+                          className="bg-primary h-full rounded-full"
                         />
                       </div>
                     </div>
@@ -262,11 +278,36 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        {/* Quick Actions Row */}
+        <motion.div
+          custom={5} variants={fadeUp} initial="hidden" animate="visible"
+          className="lg:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3"
+        >
+          {[
+            { icon: Sparkles, label: 'Cek Sinyal AI', desc: 'Real-time signals', to: '/signals', color: 'bg-primary text-white' },
+            { icon: Activity, label: 'Paper Trading', desc: 'Simulasi gratis', to: '/simulator', color: 'bg-secondary/10 text-secondary' },
+            { icon: Brain, label: 'Tanya Mentor', desc: 'AI-powered chat', to: '/mentorship', color: 'bg-primary/8 text-primary' },
+            { icon: ArrowUpRight, label: 'Belajar Sekarang', desc: 'Kurikulum terstruktur', to: '/academy', color: 'bg-secondary/8 text-secondary' },
+          ].map((action, i) => (
+            <Link key={i} to={action.to}>
+              <div className="card p-4 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 group">
+                <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", action.color)}>
+                  <action.icon className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-primary truncate">{action.label}</p>
+                  <p className="stat-label truncate">{action.desc}</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </motion.div>
       </div>
 
       {/* FAB */}
-      <button className="fixed bottom-10 right-10 w-16 h-16 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 hidden md:flex">
-        <Plus className="w-8 h-8" />
+      <button className="fixed bottom-10 right-8 w-12 h-12 bg-primary text-white rounded-xl shadow-xl shadow-primary/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 hidden md:flex">
+        <Plus className="w-5 h-5" />
       </button>
     </div>
   );
