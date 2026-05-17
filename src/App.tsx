@@ -19,6 +19,7 @@ import Mentorship from './pages/Mentorship';
 
 import Signals from './pages/Signals';
 import Settings from './pages/Settings';
+import GenericPage from './pages/GenericPage';
 
 export default function App() {
   return (
@@ -29,6 +30,13 @@ export default function App() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/onboarding" element={<Onboarding />} />
+        
+        <Route path="/about" element={<GenericPage title="Tentang Kami" />} />
+        <Route path="/careers" element={<GenericPage title="Karir" />} />
+        <Route path="/contact" element={<GenericPage title="Kontak" />} />
+        <Route path="/privacy" element={<GenericPage title="Kebijakan Privasi" />} />
+        <Route path="/risk" element={<GenericPage title="Edukasi Risiko" />} />
+        <Route path="/terms" element={<GenericPage title="Syarat & Ketentuan" />} />
         
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>

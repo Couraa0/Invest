@@ -57,9 +57,9 @@ export default function Settings() {
         </div>
 
         <div className="px-6 pb-6 relative">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-5 -mt-10">
-            <div className="relative group shrink-0">
-              <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-white">
+          <div className="flex items-end justify-between gap-4">
+            <div className="relative group shrink-0 -mt-10">
+              <div className="w-24 h-24 rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-white">
                 <img
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJNDn9tNW7r8eHm_SzPyiz195oTRN2TBCM085ZSwfJCxBkH9fOhy_Ak6v70xpYyYkkDdiAlfEdz-NmEvkEWvbEif5nqrHUbwqn7Kw475IOVbTAgtdFYBtNQWprLUEnjnzg1jNXjZKHvpOMqyFUdDOyqktbuCG37XhWbS86GovntTIeMF96wUrtOtPDaSybwhV71Kbh82o-399Jz5fDVjt2M7ghLRPeQZFWMM1HTuDWqhsrS3DrI1j78ZyaDDZwC9yjRZHhH4yZA_Q"
                   alt="Profile"
@@ -70,18 +70,17 @@ export default function Settings() {
                 <Camera className="w-3.5 h-3.5" />
               </button>
             </div>
+            <button className="shrink-0 btn-outline px-5 py-2 text-xs mb-1">Edit Profil</button>
+          </div>
 
-            <div className="flex-1 pt-2">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-xl font-bold text-primary tracking-tight">{labels[investorLevel]}</h2>
-                <div className="px-2.5 py-1 bg-primary text-white text-[9px] font-bold uppercase tracking-wider rounded-lg shadow-sm flex items-center gap-1">
-                  <Zap className="w-2.5 h-2.5 fill-current" /> Pro Member
-                </div>
+          <div className="mt-4">
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-xl font-bold text-primary tracking-tight">{labels[investorLevel]}</h2>
+              <div className="px-2.5 py-1 bg-primary text-white text-[9px] font-bold uppercase tracking-wider rounded-lg shadow-sm flex items-center gap-1">
+                <Zap className="w-2.5 h-2.5 fill-current" /> Pro Member
               </div>
-              <p className="text-sm text-on-surface-variant/50">investor.pemula@example.com</p>
             </div>
-
-            <button className="shrink-0 btn-outline px-5 py-2 text-xs">Edit Profil</button>
+            <p className="text-sm text-on-surface-variant/50">investor.pemula@example.com</p>
           </div>
         </div>
       </motion.section>

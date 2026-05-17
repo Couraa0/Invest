@@ -8,6 +8,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import Footer from '../components/Footer';
 
 const plans = [
   {
@@ -173,13 +174,14 @@ export default function Pricing() {
             <Shield className="w-8 h-8" />
           </div>
           <div>
-            <h4 className="text-lg font-bold text-primary mb-1">Keamanan Dana Terjamin</h4>
+            <h4 className="text-lg font-bold text-primary mb-1">100% Edukasi, Bebas Risiko</h4>
             <p className="text-sm text-on-surface-variant/60 leading-relaxed">
-              Semua transaksi diproses melalui gateway pembayaran berlisensi dan dana investasi Anda disimpan di sekuritas resmi yang diawasi oleh OJK.
+              Platform InvestAI murni merupakan platform edukasi dan simulasi. Anda dapat menguji berbagai strategi investasi menggunakan uang virtual tanpa risiko kehilangan uang sepeserpun.
             </p>
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }

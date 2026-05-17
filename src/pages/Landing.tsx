@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import Footer from '../components/Footer';
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -43,28 +44,28 @@ const faqs = [
     a: "AI kami memiliki tingkat akurasi historis 94.2% dalam memprediksi tren jangka menengah. Namun, semua bentuk investasi memiliki risiko, dan sinyal AI ditujukan sebagai alat bantu pengambilan keputusan, bukan jaminan pasti."
   },
   {
-    q: "Apakah saya bisa menarik dana kapan saja?",
-    a: "Tentu. Kami bermitra dengan sekuritas resmi yang diawasi OJK, sehingga dana Anda aman dan bisa ditarik ke rekening pribadi Anda kapan saja di hari kerja."
+    q: "Apakah saya perlu deposit dana untuk belajar?",
+    a: "Tidak perlu! Kami adalah platform edukasi murni. Kami menyediakan fitur Paper Trading dengan modal virtual Rp 100 Juta agar Anda bisa berlatih layaknya di pasar nyata, 100% tanpa risiko finansial."
   }
 ];
 
 const FaqItem: React.FC<{ q: string; a: string }> = ({ q, a }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <div className="border-b border-slate-100 last:border-0">
+    <div className="border-b border-slate-200">
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className="flex items-center justify-between w-full py-5 text-left group"
       >
-        <span className="text-base font-semibold text-primary group-hover:text-secondary transition-colors">{q}</span>
-        <ChevronDown className={cn("w-5 h-5 text-on-surface-variant/40 transition-transform duration-300", isOpen && "rotate-180")} />
+        <span className="text-sm font-medium text-slate-600 group-hover:text-primary transition-colors">{q}</span>
+        <ChevronDown className={cn("w-5 h-5 text-slate-400 transition-transform duration-300", isOpen && "rotate-180")} />
       </button>
       <motion.div 
         initial={false}
         animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
         className="overflow-hidden"
       >
-        <p className="pb-5 text-sm text-on-surface-variant/60 leading-relaxed">{a}</p>
+        <p className="pb-5 text-sm text-slate-500 leading-relaxed">{a}</p>
       </motion.div>
     </div>
   );
@@ -157,8 +158,8 @@ export default function Landing() {
               {/* Trust Badges */}
               <div className="mt-10 flex items-center justify-center lg:justify-start gap-6 opacity-50 hover:opacity-100 transition-opacity duration-500">
                 {[
-                  { icon: Globe, label: 'IDX' },
-                  { icon: Award, label: 'OJK' },
+                  { icon: Globe, label: 'IDX Data' },
+                  { icon: Shield, label: '100% Aman' },
                   { icon: Users, label: '500K+' },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="flex items-center gap-1.5 text-sm font-semibold text-primary">
@@ -342,29 +343,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── FAQ ── */}
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-14">
-            <motion.span
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              className="text-[10px] font-bold text-secondary uppercase tracking-[0.3em] block mb-3"
-            >
-              FAQ
-            </motion.span>
-            <h2 className="text-3xl lg:text-5xl font-bold text-primary tracking-tight mb-4">Pertanyaan Seputar InvestAI</h2>
-            <p className="text-base text-on-surface-variant/60">Temukan jawaban untuk pertanyaan yang paling sering diajukan oleh pengguna kami.</p>
-          </div>
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-10 shadow-sm">
-            {faqs.map((faq, i) => (
-              <FaqItem key={i} q={faq.q} a={faq.a} />
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA ── */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto">
@@ -405,58 +383,23 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="bg-white border-t border-slate-100 pt-16 pb-10 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-12">
-            <div className="md:col-span-5">
-              <Link to="/" className="flex items-center gap-2.5 mb-4 group">
-                <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/25 group-hover:scale-105 transition-transform overflow-hidden">
-                  <img src="/logo.svg" alt="Logo" className="w-5 h-5 brightness-0 invert" />
-                </div>
-                <span className="text-base font-bold text-primary">InvestAI</span>
-              </Link>
-              <p className="text-sm text-on-surface-variant/60 leading-relaxed max-w-sm mb-6">
-                Membangun masa depan finansial Indonesia melalui edukasi dan teknologi kecerdasan buatan kelas dunia.
-              </p>
-              <div className="flex gap-2">
-                {['facebook', 'x', 'instagram', 'linkedin'].map(s => (
-                  <a key={s} href="#" className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-primary hover:text-white text-on-surface-variant flex items-center justify-center transition-all duration-200">
-                    <span className="text-[10px] font-bold uppercase">{s[0]}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {[
-              { title: 'Produk', links: ['AI Signals', 'Academy', 'Paper Trading', 'Mentorship'] },
-              { title: 'Perusahaan', links: ['Tentang Kami', 'Karir', 'Kontak'] },
-              { title: 'Legal', links: ['Kebijakan Privasi', 'Edukasi Risiko', 'Syarat & Ketentuan'] },
-            ].map((col, i) => (
-              <div key={i} className="md:col-span-2">
-                <h5 className="text-xs font-bold text-primary uppercase tracking-wider mb-4">{col.title}</h5>
-                <ul className="space-y-2.5">
-                  {col.links.map(link => (
-                    <li key={link}>
-                      <a href="#" className="text-sm text-on-surface-variant/60 hover:text-primary transition-colors">{link}</a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-on-surface-variant/40">
-            <p>© 2026 InvestAI Indonesia. Berizin dan diawasi oleh OJK.</p>
-            <div className="flex gap-5">
-              <a href="#" className="hover:text-primary transition-colors">Edukasi Risiko</a>
-              <a href="#" className="hover:text-primary transition-colors">Kebijakan Privasi</a>
-              <a href="#" className="hover:text-primary transition-colors">Syarat & Ketentuan</a>
-            </div>
-          </div>
+      {/* ── FAQ ── */}
+      <section className="py-24 px-6 max-w-6xl mx-auto border-t border-slate-100">
+        <div className="text-left mb-10 max-w-3xl">
+          <span className="text-sm font-semibold text-primary block mb-2">kamu punya pertanyaan?</span>
+          <h2 className="text-3xl lg:text-4xl font-bold text-[#1e293b] tracking-tight mb-4">Frequently Asked Questions</h2>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Ada yang ingin kamu tanyakan tentang kami? Cek dulu daftar pertanyaan yang sering diajukan user-user kami yang sudah kami buat secara komprehensif untuk memberikan jawaban yang kamu butuhkan yuk!
+          </p>
         </div>
-      </footer>
+        <div className="max-w-4xl border-t border-slate-200">
+          {faqs.map((faq, i) => (
+            <FaqItem key={i} q={faq.q} a={faq.a} />
+          ))}
+        </div>
+      </section>
+
+      <Footer />
     </div>
   );
 }

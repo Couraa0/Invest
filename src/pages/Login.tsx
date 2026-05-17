@@ -20,11 +20,7 @@ export default function Login() {
     // Simulate API call
     setTimeout(() => {
       login();
-      if (hasCompletedOnboarding) {
-        navigate('/dashboard');
-      } else {
-        navigate('/onboarding');
-      }
+      navigate('/onboarding');
     }, 1000);
   };
 

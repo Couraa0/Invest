@@ -11,6 +11,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import Footer from '../components/Footer';
 
 const features = [
   {
@@ -124,6 +125,7 @@ export default function Features() {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }
