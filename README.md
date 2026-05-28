@@ -78,7 +78,14 @@ Script tersebut otomatis akan memicu dua *window terminal* baru:
 ---
 
 ## 🔑 Environment Variables
-Jika menggunakan *API keys* untuk servis eksternal (seperti Gemini AI atau MongoDB), pastikan untuk mendefinisikannya:
+Jika menggunakan *API keys* untuk servis eksternal, pastikan untuk mendefinisikannya:
 - Untuk Frontend: Gunakan `.env.local` di *root*.
 - Untuk Backend: Gunakan `.env` di dalam folder `backend/`.
-- Untuk AI: Gunakan `.env` di dalam folder `backend/ai/`.
+- Untuk AI (Python FastAPI): 
+  1. Masuk ke folder `backend/ai/`.
+  2. Salin file template `.env.example` menjadi `.env`:
+     ```bash
+     copy .env.example .env
+     ```
+  3. Buka file `.env` baru tersebut, lalu isi `GROQ_API_KEY` Anda dengan API Key dari [Groq Console](https://console.groq.com/keys) (gratis).
+

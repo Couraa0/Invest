@@ -32,6 +32,41 @@ const sessions = [
   { title: 'Review Portofolio Q1', date: '1 minggu lalu' },
 ];
 
+const API_BASE = 'http://localhost:8000';
+
+function renderContent(content: string) {
+  const lines = content.split('\n');
+  return lines.map((line, idx) => {
+    const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ');
+    let cleanLine = line;
+    if (isBullet) {
+      cleanLine = line.trim().replace(/^[-*]\s+/, '');
+    }
+
+    const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+    const parsedLine = parts.map((part, pIdx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={pIdx} className="font-bold text-primary">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+
+    if (isBullet) {
+      return (
+        <li key={idx} className="ml-4 list-disc list-outside mb-1 text-primary/95">
+          {parsedLine}
+        </li>
+      );
+    }
+
+    return (
+      <p key={idx} className={cn("mb-1.5 min-h-[1em]", line.trim() === "" ? "h-2" : "")}>
+        {parsedLine}
+      </p>
+    );
+  });
+}
+
 export default function Mentorship() {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Halo! Saya InvestAI Mentor. Ada yang ingin kamu tanyakan seputar pasar saham hari ini? Saya bisa membantu memahami laporan keuangan, membaca grafik, atau memberikan edukasi strategi investasi.' }
@@ -46,19 +81,47 @@ export default function Mentorship() {
     }
   }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const userMsg = input;
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
+    const userMsg = input.trim();
+    
+    const updatedMessages = [...messages, { role: 'user', content: userMsg }];
+    setMessages(updatedMessages);
     setInput('');
     setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/mentor/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: updatedMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Analisis yang bagus. Untuk sektor tersebut, AI saya mendeteksi potensi akumulasi jangka menengah karena rilis kebijakan suku bunga terbaru. Apakah kamu ingin saya bedah satu emiten spesifik di sektor ini?'
+        content: data.content || 'Gagal memproses jawaban dari AI.'
       }]);
-    }, 2000);
+    } catch (error) {
+      console.error('Error chatting with mentor:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ **Koneksi Error**: Gagal menghubungi AI Mentor. Pastikan server backend (`localhost:8000`) sudah berjalan.'
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
@@ -159,7 +222,7 @@ export default function Mentorship() {
                   ? "bg-white text-primary rounded-tl-none border border-slate-100"
                   : "bg-primary text-white rounded-tr-none shadow-md shadow-primary/10"
               )}>
-                {msg.content}
+                {msg.role === 'assistant' ? renderContent(msg.content) : msg.content}
               </div>
             </motion.div>
           ))}
