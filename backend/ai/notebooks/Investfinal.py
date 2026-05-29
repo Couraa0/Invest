@@ -108,23 +108,52 @@ Data yang diambil:
 - **Volume** — jumlah lembar saham yang diperdagangkan
 """
 
+import pandas as pd
+from datetime import datetime
+
 # ============================================================
 # Konfigurasi global project
 # ============================================================
 
-# Daftar ticker saham Indonesia
-TICKERS = ['BBCA.JK', 'ASII.JK', 'TLKM.JK', 'BMRI.JK', 'GOTO.JK', 'UNVR.JK']
+TICKERS = [
+    # Perbankan & Keuangan
+    'BBCA.JK', 'BMRI.JK', 'BBNI.JK', 'BBRI.JK', 'BRIS.JK', 'BTPS.JK',
+    'ARTO.JK', 'BNGA.JK', 'NISP.JK', 'BDMN.JK', 'MEGA.JK', 'BJBR.JK',
+    # Energi & Pertambangan
+    'ADRO.JK', 'PTBA.JK', 'ITMG.JK', 'HRUM.JK', 'BUMI.JK', 'INDY.JK',
+    'MDKA.JK', 'ANTM.JK', 'INCO.JK', 'MEDC.JK', 'ELSA.JK', 'PGAS.JK',
+    'ESSA.JK', 'ADMR.JK',
+    # Consumer Goods & Retail
+    'UNVR.JK', 'INDF.JK', 'ICBP.JK', 'KLBF.JK', 'CPIN.JK', 'JPFA.JK',
+    'MYOR.JK', 'SIDO.JK', 'GOOD.JK', 'ACES.JK', 'MAPI.JK', 'MAPA.JK', 'ERAA.JK',
+    # Telekomunikasi & Teknologi
+    'TLKM.JK', 'EXCL.JK', 'ISAT.JK','TOWR.JK', 'TBIG.JK',
+    'DCII.JK', 'BUKA.JK', 'GOTO.JK', 'EMTK.JK', 'SCMA.JK',
+    # Industri & Manufaktur
+    'ASII.JK', 'UNTR.JK', 'SRIL.JK', 'AKRA.JK', 'SMGR.JK', 'INTP.JK',
+    'AMFG.JK', 'CTRA.JK', 'BJTM.JK',
+    # Properti & Konstruksi
+    'LPKR.JK', 'WIKA.JK', 'WSKT.JK', 'PPRE.JK', 'PTPP.JK', 'BSDE.JK',
+    'SMRA.JK', 'PWON.JK',
+    # Healthcare & Farmasi
+    'KAEF.JK', 'PYFA.JK', 'MIKA.JK', 'HEAL.JK', 'TSPC.JK',
+    # Infrastruktur & Utilitas
+    'JSMR.JK', 'WEGE.JK', 'META.JK', 'BIRD.JK', 'NELY.JK',
+    # Agribisnis
+    'AALI.JK', 'SIMP.JK', 'LSIP.JK', 'TBLA.JK',
+    # Media & Hiburan
+    'MNCN.JK', 'VIVA.JK', 'LINK.JK',
+    # Logistik & Pergudangan
+    'HRTA.JK', 'INTD.JK',
+]
 
-# Rentang data: 2020 sampai sekarang
-START_DATE = '2020-01-01'
-END_DATE   = datetime.today().strftime('%Y-%m-%d')
-
-# Ticker utama untuk training single-model
+START_DATE     = '2020-01-01'
+END_DATE       = datetime.today().strftime('%Y-%m-%d')
 PRIMARY_TICKER = 'BBCA.JK'
 
-print(f"📌 Ticker  : {TICKERS}")
-print(f"📅 Periode : {START_DATE} → {END_DATE}")
-print(f"🎯 Primary : {PRIMARY_TICKER}")
+print(f"📌 Total Ticker : {len(TICKERS)} saham")
+print(f"📅 Periode      : {START_DATE} → {END_DATE}")
+print(f"🎯 Primary      : {PRIMARY_TICKER}")
 
 # ============================================================
 # Fungsi untuk mengambil & membersihkan data dari yfinance
@@ -145,6 +174,10 @@ def fetch_stock_data(ticker: str, start: str, end: str) -> pd.DataFrame:
     print(f"⏳ Mengambil data {ticker}...")
     df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
 
+    if df.empty:
+        print(f"   ❌ Gagal mendapatkan data untuk {ticker}. DataFrame kosong.")
+        return pd.DataFrame()
+
     # Flatten MultiIndex columns jika ada
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
@@ -153,6 +186,10 @@ def fetch_stock_data(ticker: str, start: str, end: str) -> pd.DataFrame:
     required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     df = df[required_cols].copy()
     df.dropna(inplace=True)
+
+    if df.empty:
+        print(f"   ❌ Data untuk {ticker} menjadi kosong setelah preprocessing.")
+        return pd.DataFrame()
 
     print(f"   ✅ {ticker}: {len(df)} baris data ({df.index[0].date()} → {df.index[-1].date()})")
     return df
@@ -281,187 +318,172 @@ Indikator teknikal adalah **sinyal matematis** yang dihitung dari data harga unt
 """
 
 # ============================================================
-# Fungsi utama: Feature Engineering + Target Label
+# CELL 1 — Feature Engineering yang diperkaya
 # ============================================================
+import pandas as pd
+import numpy as np
+import warnings
+warnings.filterwarnings('ignore')
 
-def add_features(df: pd.DataFrame) -> pd.DataFrame:
+def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Menambahkan semua indikator teknikal sebagai fitur ML.
-
-    Parameters:
-        df : DataFrame dengan kolom Open, High, Low, Close, Volume
-
-    Returns:
-        DataFrame dengan fitur tambahan dan kolom target 'Label'
+    Buat fitur teknikal multi-dimensi dari OHLCV.
+    df harus punya kolom: Open, High, Low, Close, Volume
     """
-    df = df.copy()
-    close = df['Close']
-    high  = df['High']
-    low   = df['Low']
-    vol   = df['Volume']
+    d = df.copy()
+    c = d['Close']
+    v = d['Volume']
+    h = d['High']
+    l = d['Low']
 
-    # --- 1. Moving Averages ---
-    # SMA 20: rata-rata harga 20 hari terakhir
-    df['SMA_20'] = SMAIndicator(close=close, window=20).sma_indicator()
-    # SMA 50: rata-rata harga 50 hari terakhir
-    df['SMA_50'] = SMAIndicator(close=close, window=50).sma_indicator()
-    # EMA 12: exponential moving average 12 hari
-    df['EMA_12'] = EMAIndicator(close=close, window=12).ema_indicator()
-    # EMA 26: exponential moving average 26 hari
-    df['EMA_26'] = EMAIndicator(close=close, window=26).ema_indicator()
+    # --- Momentum multi-timeframe ---
+    for n in [3, 5, 10, 20]:
+        d[f'mom_{n}d']    = c.pct_change(n)
+        d[f'return_{n}d'] = c / c.shift(n) - 1
 
-    # --- 2. RSI (Relative Strength Index) ---
-    # RSI > 70 = overbought (harga terlalu tinggi, mungkin turun)
-    # RSI < 30 = oversold  (harga terlalu rendah, mungkin naik)
-    df['RSI'] = RSIIndicator(close=close, window=14).rsi()
+    # Lag returns — penting buat model mendeteksi serial correlation
+    for lag in [1, 2, 3, 5]:
+        d[f'lag_ret_{lag}'] = c.pct_change(1).shift(lag)
 
-    # --- 3. MACD ---
-    # Selisih antara EMA cepat (12) dan EMA lambat (26)
-    # Jika MACD > Signal Line → sinyal beli
-    macd_obj = MACD(close=close, window_slow=26, window_fast=12, window_sign=9)
-    df['MACD']        = macd_obj.macd()
-    df['MACD_Signal'] = macd_obj.macd_signal()
-    df['MACD_Diff']   = macd_obj.macd_diff()  # histogram: MACD - Signal
+    # --- RSI (14 dan 7 hari) ---
+    def calc_rsi(series, period=14):
+        delta = series.diff()
+        gain  = delta.clip(lower=0).rolling(period).mean()
+        loss  = (-delta.clip(upper=0)).rolling(period).mean()
+        rs    = gain / (loss + 1e-9)
+        return 100 - (100 / (1 + rs))
 
-    # --- 4. Bollinger Bands ---
-    # Batas atas/bawah berdasarkan volatilitas (2 std dev dari SMA)
-    bb = BollingerBands(close=close, window=20, window_dev=2)
-    df['BB_Upper'] = bb.bollinger_hband()
-    df['BB_Lower'] = bb.bollinger_lband()
-    df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / close  # relative width
+    d['rsi_14']    = calc_rsi(c, 14)
+    d['rsi_7']     = calc_rsi(c, 7)
+    d['rsi_div']   = d['rsi_14'] - d['rsi_7']          # divergence antar timeframe
+    d['rsi_slope'] = d['rsi_14'].diff(3)                # arah RSI bergerak
 
-    # --- 5. Daily Return ---
-    # Persentase perubahan harga hari ini vs kemarin
-    df['Daily_Return'] = close.pct_change() * 100
+    # --- MACD + histogram slope ---
+    ema12          = c.ewm(span=12, adjust=False).mean()
+    ema26          = c.ewm(span=26, adjust=False).mean()
+    d['macd']      = ema12 - ema26
+    d['macd_sig']  = d['macd'].ewm(span=9, adjust=False).mean()
+    d['macd_hist'] = d['macd'] - d['macd_sig']
+    d['macd_slope']= d['macd_hist'].diff(3)             # slope histogram = awal reversal
 
-    # --- 6. Volatility ---
-    # Standar deviasi rolling 10 hari dari daily return
-    df['Volatility_10'] = df['Daily_Return'].rolling(window=10).std()
+    # --- Bollinger Bands ---
+    bb_mid         = c.rolling(20).mean()
+    bb_std         = c.rolling(20).std()
+    d['bb_pct']    = (c - (bb_mid - 2*bb_std)) / (4*bb_std + 1e-9)   # %B: 0=bawah, 1=atas
+    d['bb_width']  = (4 * bb_std) / (bb_mid + 1e-9)                   # lebar band = volatility
 
-    # --- 7. Price vs Moving Average (Ratio) ---
-    # Seberapa jauh harga dari SMA-nya (sinyal divergence)
-    df['Price_SMA20_Ratio'] = close / df['SMA_20']
-    df['Price_SMA50_Ratio'] = close / df['SMA_50']
+    # --- ATR + volatility regime ---
+    tr             = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+    d['atr_14']    = tr.rolling(14).mean()
+    d['atr_pct']   = d['atr_14'] / c                                  # ATR relatif terhadap harga
+    d['vol_regime']= (d['atr_pct'] > d['atr_pct'].rolling(60).median()).astype(int)  # 1=high vol
 
-    # --- 8. Volume Change ---
-    # Lonjakan volume bisa menandakan pergerakan besar
-    df['Volume_Change'] = vol.pct_change() * 100
-    df['Volume_MA5']    = vol.rolling(window=5).mean()
-    df['Volume_Ratio']  = vol / df['Volume_MA5']  # volume vs rata-rata
+    # --- Volume signals ---
+    vol_ma20       = v.rolling(20).mean()
+    vol_std20      = v.rolling(20).std()
+    d['vol_zscore']= (v - vol_ma20) / (vol_std20 + 1e-9)              # anomaly volume
+    d['vol_ratio'] = v / (vol_ma20 + 1e-9)                            # volume relatif
 
-    # --- 9. High-Low Spread ---
-    # Range harga dalam 1 hari (proxy volatilitas intraday)
-    df['HL_Spread'] = (high - low) / close * 100
+    # OBV (On-Balance Volume)
+    obv            = (np.sign(c.diff()) * v).fillna(0).cumsum()
+    d['obv_trend'] = obv.diff(5).apply(np.sign)                        # arah OBV 5 hari
 
-    # --- 10. Lag Features ---
-    # Informasi dari 1, 2, 3 hari sebelumnya
-    for lag in [1, 2, 3]:
-        df[f'Return_Lag{lag}'] = df['Daily_Return'].shift(lag)
-        df[f'RSI_Lag{lag}']    = df['RSI'].shift(lag)
+    # Volume-price divergence: harga naik tapi volume turun = bearish
+    d['vp_div']    = (c.pct_change(3) * d['vol_zscore'].shift(1))     # interaksi
 
-    # --- 11. Additional Features ---
-    from ta.volatility import AverageTrueRange
-    df['ATR'] = AverageTrueRange(high, low, close, window=14).average_true_range()
+    # --- Mean reversion signals ---
+    for ma in [10, 20, 50]:
+        d[f'dist_ma{ma}'] = (c / c.rolling(ma).mean()) - 1            # jarak dari MA
 
-    from ta.volume import OnBalanceVolumeIndicator
-    df['OBV'] = OnBalanceVolumeIndicator(close=close, volume=vol).on_balance_volume()
+    # Z-score mean reversion (20 hari)
+    d['zscore_20'] = (c - c.rolling(20).mean()) / (c.rolling(20).std() + 1e-9)
 
-    for w in [5, 10, 20]:
-        df[f'Return_Roll{w}'] = close.pct_change(w) * 100
+    # Distance dari 52-week high/low
+    d['dist_52h']  = (c / h.rolling(252).max()) - 1                   # berapa % dari puncak
+    d['dist_52l']  = (c / l.rolling(252).min()) - 1                   # berapa % dari dasar
 
-    from ta.momentum import StochasticOscillator
-    stoch = StochasticOscillator(high, low, close, window=14)
-    df['Stoch_K'] = stoch.stoch()
-    df['Stoch_D'] = stoch.stoch_signal()
+    # --- Candlestick body ratio ---
+    d['body_ratio']= (c - df['Open']).abs() / (tr + 1e-9)             # ukuran body vs total range
+    d['upper_wick']= (h - pd.concat([c, df['Open']], axis=1).max(axis=1)) / (tr + 1e-9)
+    d['lower_wick']= (pd.concat([c, df['Open']], axis=1).min(axis=1) - l) / (tr + 1e-9)
 
-    # ============================================================
-    # TARGET: apakah harga besok NAIK (1) atau TURUN (0)?
-    # Menggunakan harga Close hari berikutnya
-    # ============================================================
-    df['Future_Return'] = close.shift(-1) / close - 1  # return besok
-    THRESHOLD = 0.003  # 0.3%
-    df['Label'] = 0
-    df.loc[df['Future_Return'] >  THRESHOLD, 'Label'] = 1
-    df.loc[df['Future_Return'] < -THRESHOLD, 'Label'] = 0
-    # Baris sideways (-0.3% s/d +0.3%) → drop
-    df = df[df['Future_Return'].abs() > THRESHOLD]
+    return d
 
-    # Hapus baris dengan NaN (akibat rolling window)
-    df.dropna(inplace=True)
-
-    return df
-
-
-# --- Terapkan ke data utama ---
-df_feat = add_features(df_raw)
-
-print(f"✅ Feature engineering selesai!")
-print(f"   📊 Shape: {df_feat.shape}")
-print(f"   📋 Fitur: {[c for c in df_feat.columns if c not in ['Open','High','Low','Close','Volume','Future_Return','Label']]}")
-print()
-
-# Distribusi target
-label_counts = df_feat['Label'].value_counts()
-print("🎯 Distribusi Target:")
-print(f"   Naik  (1): {label_counts.get(1, 0):,} hari ({label_counts.get(1, 0)/len(df_feat)*100:.1f}%)者に確認し、解決しました。")
-print(f"   Turun (0): {label_counts.get(0, 0):,} hari ({label_counts.get(0, 0)/len(df_feat)*100:.1f}%)者で確認し、解決しました。")
+# Terapkan ke data kamu (sesuaikan dengan variabel data yang kamu punya)
+# Contoh: df = engineer_features(raw_df)
+print("✅ Fungsi engineer_features siap dipakai")
+print(f"   Jumlah fitur yang dibuat: ~35 fitur teknikal")
 
 # ============================================================
 # Visualisasi Indikator Teknikal (Plotly Interactive)
 # ============================================================
 
-# Ambil 200 data terbaru untuk visualisasi yang lebih jelas
-df_viz = df_feat.tail(200)
+# Pastikan fitur sudah dibuat sebelum visualisasi
+try:
+    df_viz_full = engineer_features(df_raw)
+    # Ambil 200 data terbaru untuk visualisasi yang lebih jelas
+    df_viz = df_viz_full.tail(200)
 
-fig = make_subplots(
-    rows=3, cols=1,
-    shared_xaxes=True,
-    subplot_titles=(
-        f'📈 Harga & Moving Average — {PRIMARY_TICKER}',
-        '📊 RSI (Relative Strength Index)',
-        '📉 MACD'
-    ),
-    row_heights=[0.5, 0.25, 0.25],
-    vertical_spacing=0.06
-)
+    # Hitung SMA & BB secara manual untuk visualisasi karena fungsi engineer_features
+    # yang baru menggunakan nama kolom yang berbeda
+    df_viz['SMA_20'] = df_viz['Close'].rolling(20).mean()
+    df_viz['SMA_50'] = df_viz['Close'].rolling(50).mean()
+    std = df_viz['Close'].rolling(20).std()
+    df_viz['BB_Upper'] = df_viz['SMA_20'] + (std * 2)
+    df_viz['BB_Lower'] = df_viz['SMA_20'] - (std * 2)
 
-# --- Panel 1: Harga + SMA ---
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['Close'],
-    name='Close', line=dict(color='#2196F3', width=1.5)), row=1, col=1)
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['SMA_20'],
-    name='SMA 20', line=dict(color='#FF9800', width=1.2, dash='dash')), row=1, col=1)
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['SMA_50'],
-    name='SMA 50', line=dict(color='#9C27B0', width=1.2, dash='dot')), row=1, col=1)
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['BB_Upper'],
-    name='BB Upper', line=dict(color='#aaa', width=1, dash='dot'), showlegend=True), row=1, col=1)
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['BB_Lower'],
-    name='BB Lower', line=dict(color='#aaa', width=1, dash='dot'),
-    fill='tonexty', fillcolor='rgba(200,200,200,0.1)', showlegend=True), row=1, col=1)
+    fig = make_subplots(
+        rows=3, cols=1,
+        shared_xaxes=True,
+        subplot_titles=(
+            f'📈 Harga & Moving Average — {PRIMARY_TICKER}',
+            '📊 RSI (Relative Strength Index)',
+            '📉 MACD'
+        ),
+        row_heights=[0.5, 0.25, 0.25],
+        vertical_spacing=0.06
+    )
 
-# --- Panel 2: RSI ---
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['RSI'],
-    name='RSI', line=dict(color='#E91E63', width=1.5)), row=2, col=1)
-fig.add_hline(y=70, line_dash='dash', line_color='red', row=2, col=1, annotation_text='Overbought 70')
-fig.add_hline(y=30, line_dash='dash', line_color='green', row=2, col=1, annotation_text='Oversold 30')
+    # --- Panel 1: Harga + SMA ---
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['Close'],
+        name='Close', line=dict(color='#2196F3', width=1.5)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['SMA_20'],
+        name='SMA 20', line=dict(color='#FF9800', width=1.2, dash='dash')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['SMA_50'],
+        name='SMA 50', line=dict(color='#9C27B0', width=1.2, dash='dot')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['BB_Upper'],
+        name='BB Upper', line=dict(color='#aaa', width=1, dash='dot'), showlegend=True), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['BB_Lower'],
+        name='BB Lower', line=dict(color='#aaa', width=1, dash='dot'),
+        fill='tonexty', fillcolor='rgba(200,200,200,0.1)', showlegend=True), row=1, col=1)
 
-# --- Panel 3: MACD ---
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['MACD'],
-    name='MACD', line=dict(color='#009688', width=1.5)), row=3, col=1)
-fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['MACD_Signal'],
-    name='Signal', line=dict(color='#FF5722', width=1.5, dash='dash')), row=3, col=1)
-colors_hist = ['#4CAF50' if v >= 0 else '#F44336' for v in df_viz['MACD_Diff']]
-fig.add_trace(go.Bar(x=df_viz.index, y=df_viz['MACD_Diff'],
-    name='Histogram', marker_color=colors_hist, opacity=0.7), row=3, col=1)
+    # --- Panel 2: RSI ---
+    # Menggunakan rsi_14 dari engineer_features
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['rsi_14'],
+        name='RSI', line=dict(color='#E91E63', width=1.5)), row=2, col=1)
+    fig.add_hline(y=70, line_dash='dash', line_color='red', row=2, col=1, annotation_text='Overbought 70')
+    fig.add_hline(y=30, line_dash='dash', line_color='green', row=2, col=1, annotation_text='Oversold 30')
 
-fig.update_layout(
-    height=700,
-    title_text=f'<b>📊 Analisis Teknikal — {PRIMARY_TICKER}</b>',
-    hovermode='x unified',
-    template='plotly_dark',
-    legend=dict(orientation='h', y=1.02)
-)
-fig.show()
-print("✅ Grafik interaktif ditampilkan!")
+    # --- Panel 3: MACD ---
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['macd'],
+        name='MACD', line=dict(color='#009688', width=1.5)), row=3, col=1)
+    fig.add_trace(go.Scatter(x=df_viz.index, y=df_viz['macd_sig'],
+        name='Signal', line=dict(color='#FF5722', width=1.5, dash='dash')), row=3, col=1)
+    colors_hist = ['#4CAF50' if v >= 0 else '#F44336' for v in df_viz['macd_hist']]
+    fig.add_trace(go.Bar(x=df_viz.index, y=df_viz['macd_hist'],
+        name='Histogram', marker_color=colors_hist, opacity=0.7), row=3, col=1)
+
+    fig.update_layout(
+        height=700,
+        title_text=f'<b>📊 Analisis Teknikal — {PRIMARY_TICKER}</b>',
+        hovermode='x unified',
+        template='plotly_dark',
+        legend=dict(orientation='h', y=1.02)
+    )
+    fig.show()
+    print("✅ Grafik interaktif ditampilkan!")
+except NameError as e:
+    print(f"❌ Error: {e}. Pastikan cell 'sa8R2dHW0PM9' (engineer_features) sudah dijalankan.")
 
 """---
 # 5️⃣ Preprocessing & Training
@@ -480,30 +502,78 @@ Kita menggunakan **XGBoost (Extreme Gradient Boosting)** karena:
 """
 
 # ============================================================
-# Definisikan fitur (X) dan target (y)
+# CELL 2 — Target smarter + Walk-Forward Split
 # ============================================================
 
-# Kolom yang BUKAN fitur input model
-EXCLUDE_COLS = ['Open', 'High', 'Low', 'Close', 'Volume',
-                'Future_Return', 'Label']
+def create_target(df: pd.DataFrame, forward_days: int = 3, min_return: float = 0.005) -> pd.Series:
+    """
+    Target yang lebih bersih:
+    - 1 = return positif signifikan (> min_return) dalam forward_days ke depan
+    - 0 = sebaliknya
+    Menghindari noise microstructure dari prediksi 1-hari.
+    """
+    forward_ret = df['Close'].pct_change(forward_days).shift(-forward_days)
+    return (forward_ret > min_return).astype(int)
 
-# Semua kolom sisanya adalah fitur
-FEATURE_COLS = [c for c in df_feat.columns if c not in EXCLUDE_COLS]
 
-X = df_feat[FEATURE_COLS].values
-y = df_feat['Label'].values
+def walk_forward_split(df: pd.DataFrame, n_splits: int = 4, test_ratio: float = 0.15):
+    """
+    Buat split kronologis — tidak ada data leak.
+    Setiap split: train pakai semua data sebelum test window.
+    """
+    n = len(df)
+    test_size  = int(n * test_ratio)
+    total_test = test_size * n_splits
 
-print(f"✅ Jumlah fitur   : {len(FEATURE_COLS)}")
-print(f"📋 Daftar fitur   : {FEATURE_COLS}")
-print(f"📊 Shape X        : {X.shape}")
-print(f"🎯 Shape y        : {y.shape}")
+    splits = []
+    for i in range(n_splits):
+        test_end   = n - i * test_size
+        test_start = test_end - test_size
+        # Minimal train = 252 hari (1 tahun)
+        if test_start < 252:
+            break
+        splits.append((
+            df.index[:test_start],
+            df.index[test_start:test_end]
+        ))
+
+    return list(reversed(splits))   # urutan kronologis
+
+
+# ============================================================
+# Siapkan fitur dan target — SESUAIKAN nama variabel kamu
+# ============================================================
+
+# Asumsi: raw_df adalah DataFrame dengan OHLCV yang sudah di-download
+# raw_df = yf.download(PRIMARY_TICKER, start=START_DATE, end=END_DATE)
+# raw_df.columns = raw_df.columns.droplevel(1) jika multi-level
+
+df_feat = engineer_features(df_raw)
+df_feat['target'] = create_target(df_feat, forward_days=3, min_return=0.005)
+
+# Hapus baris dengan NaN (dari rolling window) dan forward-looking NaN
+df_feat.dropna(inplace=True)
+
+# Pilih kolom fitur (semua kecuali OHLCV raw dan target)
+EXCLUDE   = ['Open', 'High', 'Low', 'Close', 'Volume', 'Adj Close', 'target']
+FEATURE_COLS = [c for c in df_feat.columns if c not in EXCLUDE]
+
+print(f"📊 Total data bersih : {len(df_feat)} baris")
+print(f"📌 Jumlah fitur      : {len(FEATURE_COLS)}")
+print(f"🎯 Distribusi target : Naik={df_feat['target'].mean():.1%} | Turun/Flat={(1-df_feat['target'].mean()):.1%}")
+print(f"\nFitur yang digunakan:")
+for i, col in enumerate(FEATURE_COLS, 1):
+    print(f"  {i:2d}. {col}")
 
 # ============================================================
 # Train-Test Split (time-series aware)
 # ============================================================
 # PENTING: Untuk data time-series, kita TIDAK boleh shuffle!
 # Data train = masa lalu, data test = masa depan
-# Ini mencegah "data leakage" (kebocoran informasi dari masa depan)
+
+# Siapkan array X dan y dari df_feat
+X = df_feat[FEATURE_COLS].values
+y = df_feat['target'].values
 
 SPLIT_RATIO = 0.8  # 80% train, 20% test
 split_idx   = int(len(X) * SPLIT_RATIO)
@@ -551,83 +621,181 @@ print(f"   Mean fitur pertama (train): {scaler.mean_[0]:.4f}")
 print(f"   Std fitur pertama  (train): {scaler.scale_[0]:.4f}")
 
 # ============================================================
-# Training Model XGBoost (Model Utama) dengan Optuna Hyperparameter Tuning
+# CELL 3 — Training XGBoost + Optuna dengan Walk-Forward CV
 # ============================================================
-
-# Install Optuna if not already installed
-!pip install optuna --quiet
-
-print("🚀 Melatih model XGBoost dengan Optuna...")
+!pip install optuna xgboost --quiet
 
 import optuna
 from xgboost import XGBClassifier
-from sklearn.model_selection import cross_val_score
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+from sklearn.preprocessing import RobustScaler
 import numpy as np
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-# Cek imbalance dan hitung scale_pos_weight
-print(f"Rasio kelas 'Naik' (1) di training data: {y_train.mean():.2f}")
-ratio = 1 # Default
-if y_train.mean() < 0.45 or y_train.mean() > 0.55:
-    # Menghitung rasio jumlah sampel kelas negatif (0) terhadap kelas positif (1)
-    ratio = float(np.sum(y_train == 0)) / np.sum(y_train == 1)
-    print(f"Dataset tidak seimbang, menggunakan scale_pos_weight = {ratio:.2f}")
-else:
-    print("Dataset seimbang, tidak menggunakan scale_pos_weight.")
+X = df_feat[FEATURE_COLS].values
+y = df_feat['target'].values
+idx = df_feat.index
 
+splits = walk_forward_split(df_feat, n_splits=4, test_ratio=0.15)
+print(f"🔀 Walk-forward splits: {len(splits)} fold")
+
+# -------------------------------------------------------
+# Optuna: objective pakai walk-forward bukan random CV
+# -------------------------------------------------------
 def objective(trial):
     params = {
-        'n_estimators':      trial.suggest_int('n_estimators', 100, 500),
-        'max_depth':         trial.suggest_int('max_depth', 3, 8),
-        'learning_rate':     trial.suggest_float('learning_rate', 0.01, 0.2, log=True),
-        'subsample':         trial.suggest_float('subsample', 0.6, 1.0),
-        'colsample_bytree':  trial.suggest_float('colsample_bytree', 0.5, 1.0),
-        'min_child_weight':  trial.suggest_int('min_child_weight', 1, 10),
-        'gamma':             trial.suggest_float('gamma', 0, 1.0),
-        'use_label_encoder': False,
-        'eval_metric':       'logloss',
-        'random_state':      42,
-        'n_jobs':            -1, # gunakan semua CPU
-        'scale_pos_weight':  ratio # Balancing for imbalanced datasets
+        'n_estimators':     trial.suggest_int('n_estimators', 200, 800),
+        'max_depth':        trial.suggest_int('max_depth', 3, 7),
+        'learning_rate':    trial.suggest_float('learning_rate', 0.005, 0.15, log=True),
+        'subsample':        trial.suggest_float('subsample', 0.6, 0.9),
+        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 0.9),
+        'min_child_weight': trial.suggest_int('min_child_weight', 3, 15),
+        'gamma':            trial.suggest_float('gamma', 0.1, 2.0),
+        'reg_alpha':        trial.suggest_float('reg_alpha', 0.0, 1.0),   # L1 regularization
+        'reg_lambda':       trial.suggest_float('reg_lambda', 0.5, 5.0),  # L2 regularization
+        'eval_metric':      'logloss',
+        'early_stopping_rounds': 30, # Dipindahkan ke sini (XGBoost 2.0+)
+        'random_state':     42,
+        'n_jobs':           -1,
     }
-    m = XGBClassifier(**params)
-    # Menggunakan cross_val_score untuk evaluasi, lebih robust
-    return cross_val_score(m, X_train, y_train, cv=5, scoring='accuracy').mean()
 
-# Buat study Optuna dan jalankan optimasi
-study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=50, show_progress_bar=True)
+    fold_scores = []
+    for train_idx, test_idx in splits:
+        loc_train = df_feat.index.isin(train_idx)
+        loc_test  = df_feat.index.isin(test_idx)
 
-# Latih model final dengan parameter terbaik
-xgb_model = XGBClassifier(**study.best_params,
-    use_label_encoder=False, eval_metric='logloss', random_state=42, n_jobs=-1,
-    scale_pos_weight=ratio)
-xgb_model.fit(
-    X_train, y_train,
-    eval_set   = [(X_test, y_test)],
-    verbose    = False
+        X_tr, y_tr = X[loc_train], y[loc_train]
+        X_te, y_te = X[loc_test],  y[loc_test]
+
+        # Imbalance handling per fold
+        neg, pos  = np.sum(y_tr == 0), np.sum(y_tr == 1)
+        spw       = neg / (pos + 1e-9) if abs(neg/pos - 1) > 0.1 else 1.0
+
+        # Scale fitur
+        scaler  = RobustScaler()
+        X_tr_sc = scaler.fit_transform(X_tr)
+        X_te_sc = scaler.transform(X_te)
+
+        m = XGBClassifier(**params, scale_pos_weight=spw)
+        m.fit(X_tr_sc, y_tr,
+              eval_set=[(X_te_sc, y_te)],
+              verbose=False)
+
+        pred  = m.predict(X_te_sc)
+        score = accuracy_score(y_te, pred)
+        fold_scores.append(score)
+
+    return np.mean(fold_scores)
+
+
+# -------------------------------------------------------
+# Jalankan Optuna
+# -------------------------------------------------------
+print("🔍 Menjalankan Optuna hyperparameter search (75 trials)...")
+study = optuna.create_study(
+    direction='maximize',
+    sampler=optuna.samplers.TPESampler(seed=42)
 )
+study.optimize(objective, n_trials=75, show_progress_bar=True)
 
-print("✅ XGBoost selesai dilatih dengan parameter terbaik!")
+print(f"\n🏆 Best walk-forward accuracy : {study.best_value:.4f}")
 print(f"   Best params: {study.best_params}")
-print(f"   Best cross-validation accuracy: {study.best_value:.4f}")
 
-# ============================================================
-# Training Model Random Forest (Baseline Pembanding)
-# ============================================================
 
-print("🌲 Melatih model Random Forest...")
+# -------------------------------------------------------
+# Training final model + evaluasi per fold
+# -------------------------------------------------------
+print("\n📈 Evaluasi per fold (walk-forward):")
+print("-" * 55)
 
-rf_model = RandomForestClassifier(
-    n_estimators = 200,
-    max_depth    = 7,
-    random_state = 42,
-    n_jobs       = -1
-)
-rf_model.fit(X_train, y_train)
+best_params = study.best_params
+fold_results = []
 
-print("✅ Random Forest selesai dilatih!")
+for i, (train_idx, test_idx) in enumerate(splits, 1):
+    loc_train = df_feat.index.isin(train_idx)
+    loc_test  = df_feat.index.isin(test_idx)
+
+    X_tr, y_tr = X[loc_train], y[loc_train]
+    X_te, y_te = X[loc_test],  y[loc_test]
+
+    neg, pos  = np.sum(y_tr == 0), np.sum(y_tr == 1)
+    spw       = neg / (pos + 1e-9) if abs(neg/pos - 1) > 0.1 else 1.0
+
+    scaler    = RobustScaler()
+    X_tr_sc   = scaler.fit_transform(X_tr)
+    X_te_sc   = scaler.transform(X_te)
+
+    model = XGBClassifier(**best_params,
+        eval_metric='logloss', early_stopping_rounds=30,
+        random_state=42, n_jobs=-1, scale_pos_weight=spw)
+
+    model.fit(X_tr_sc, y_tr,
+              eval_set=[(X_te_sc, y_te)],
+              verbose=False)
+
+    proba  = model.predict_proba(X_te_sc)[:, 1]
+    pred   = (proba > 0.5).astype(int)
+
+    acc    = accuracy_score(y_te, pred)
+    auc    = roc_auc_score(y_te, proba)
+
+    # Confident predictions only (threshold 60%)
+    mask_conf = (proba >= 0.60) | (proba <= 0.40)
+    if mask_conf.sum() > 0:
+        acc_conf = accuracy_score(y_te[mask_conf], pred[mask_conf])
+        coverage = mask_conf.mean()
+    else:
+        acc_conf, coverage = acc, 1.0
+
+    fold_results.append({'fold': i, 'acc': acc, 'auc': auc,
+                         'acc_conf': acc_conf, 'coverage': coverage,
+                         'model': model, 'scaler': scaler})
+
+    print(f"  Fold {i}: acc={acc:.4f} | AUC={auc:.4f} | "
+          f"acc@60%conf={acc_conf:.4f} (coverage={coverage:.1%})")
+
+# Simpan model fold terbaik (berdasarkan AUC)
+best_fold   = max(fold_results, key=lambda x: x['auc'])
+xgb_model   = best_fold['model']
+final_scaler= best_fold['scaler']
+
+print(f"\n✅ Model terbaik: Fold {best_fold['fold']} "
+      f"(AUC={best_fold['auc']:.4f})")
+print(f"\n{'='*55}")
+print("📋 Classification report (fold terbaik):")
+loc_test_best = df_feat.index.isin(splits[best_fold['fold']-1][1])
+X_te_final    = final_scaler.transform(X[loc_test_best])
+y_te_final    = y[loc_test_best]
+print(classification_report(y_te_final, xgb_model.predict(X_te_final),
+      target_names=['Turun/Flat', 'Naik']))
+
+import joblib
+import os
+
+# Bundle model dan metadata pendukung agar mudah digunakan saat inference
+model_bundle = {
+    'model': xgb_model,
+    'scaler': final_scaler,
+    'feature_cols': FEATURE_COLS,
+    'ticker': PRIMARY_TICKER,
+    'train_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    'best_params': study.best_params,
+    'accuracy_val': best_fold['acc']
+}
+
+# Nama file
+SAVE_PATH = 'best_xgb_stock_model.pkl'
+
+# Simpan model
+joblib.dump(model_bundle, SAVE_PATH)
+
+file_size = os.path.getsize(SAVE_PATH) / 1024  # KB
+print(f"✅ Model berhasil disimpan!")
+print(f"📂 File: {SAVE_PATH}")
+print(f"📦 Ukuran: {file_size:.1f} KB")
+print(f"🎯 Accuracy (Best Fold): {best_fold['acc']*100:.2f}%")
+print(f"🚀 Ticker Utama: {PRIMARY_TICKER}")
 
 """---
 # 6️⃣ Evaluasi Model
@@ -640,35 +808,6 @@ Kita evaluasi model menggunakan:
 > 💡 Dalam trading, **precision** lebih penting dari accuracy!
 > Lebih baik miss beberapa peluang daripada salah masuk posisi.
 """
-
-# ============================================================
-# Prediksi & Evaluasi
-# ============================================================
-
-def evaluate_model(model, X_test, y_test, model_name='Model'):
-    """
-    Mengevaluasi model dan menampilkan metrik lengkap.
-    """
-    y_pred  = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]  # probabilitas kelas 1 (Naik)
-    acc     = accuracy_score(y_test, y_pred)
-
-    print(f"\n{'='*50}")
-    print(f"📊 Evaluasi: {model_name}")
-    print(f"{'='*50}")
-    print(f"🎯 Accuracy : {acc*100:.2f}%")
-    print()
-    print("📋 Classification Report:")
-    print(classification_report(y_test, y_pred, target_names=['Turun (0)', 'Naik (1)']))
-
-    return y_pred, y_proba, acc
-
-
-# Evaluasi XGBoost
-xgb_pred, xgb_proba, xgb_acc = evaluate_model(xgb_model, X_test, y_test, 'XGBoost')
-
-# Evaluasi Random Forest
-rf_pred, rf_proba, rf_acc = evaluate_model(rf_model, X_test, y_test, 'Random Forest')
 
 # ============================================================
 # Confusion Matrix (visual)

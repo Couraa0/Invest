@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-InvestAI — FastAPI Main Application
+InvestAI — FastAPI Main Application (v2 — XGBoost Engine)
 Jalankan dengan: uvicorn app.main:app --reload --port 8000
 """
 
@@ -32,16 +32,16 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Startup: load model ke memory sekali saja.
+    Startup: load XGBoost model ke memory sekali saja.
     Shutdown: bersihkan resources.
     """
-    logger.info("🚀 InvestAI API starting up...")
+    logger.info("🚀 InvestAI API v2 starting up (XGBoost Engine)...")
     try:
         bundle = load_model()
         logger.info(
-            f"✅ Model loaded — "
+            f"✅ XGBoost model loaded — "
             f"Fitur: {len(bundle['feature_cols'])}, "
-            f"Tickers: {bundle.get('tickers', ['N/A'])}"
+            f"Akurasi: {bundle.get('accuracy_val', bundle.get('accuracy', 'N/A'))}"
         )
     except Exception as e:
         logger.error(f"❌ Gagal load model: {e}")
@@ -57,13 +57,14 @@ async def lifespan(app: FastAPI):
 # ================================================================
 
 app = FastAPI(
-    title="InvestAI — Stock Prediction API",
+    title="InvestAI — Stock Prediction API v2",
     description=(
-        "REST API real-time untuk prediksi saham Indonesia menggunakan "
-        "Machine Learning (Random Forest multi-stock) + yfinance. "
-        "Menyediakan sinyal BUY/SELL, confidence score, dan indikator teknikal."
+        "REST API real-time untuk prediksi 90+ saham IDX menggunakan "
+        "XGBoost Machine Learning + yfinance. "
+        "Menyediakan sinyal BUY/SELL, confidence score, indikator teknikal, "
+        "dan prediksi per sektor industri."
     ),
-    version="1.0.0",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -102,18 +103,21 @@ app.include_router(router)
 def root():
     return {
         "app":     "InvestAI Stock Prediction API",
-        "version": "1.0.0",
+        "version": "2.0.0",
+        "engine":  "XGBoost",
         "docs":    "/docs",
         "status":  "running",
         "endpoints": [
-            "GET /api/stocks            → prediksi semua 6 saham",
-            "GET /api/stocks/{symbol}   → prediksi + chart satu saham",
-            "GET /api/market/overview   → data IHSG",
-            "DELETE /api/cache          → clear cache (dev)",
+            "GET /api/stocks                       → prediksi semua 90+ saham",
+            "GET /api/stocks/{symbol}              → prediksi + chart satu saham",
+            "GET /api/stocks/categories            → daftar sektor & ticker",
+            "GET /api/stocks/by-category/{cat}    → prediksi per sektor (lazy)",
+            "GET /api/market/overview              → data IHSG",
+            "DELETE /api/cache                    → clear cache (dev)",
         ],
     }
 
 
 @app.get("/health", tags=["meta"])
 def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": "2.0.0", "engine": "XGBoost"}

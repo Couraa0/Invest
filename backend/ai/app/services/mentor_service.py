@@ -62,7 +62,7 @@ def get_stocks_summary_for_prompt() -> str:
         return "Catatan: Data harga saham real-time IDX saat ini tidak dapat dimuat."
 
     lines = [
-        "Berikut adalah data harga saham real-time Indonesia (BEI/IDX) beserta analisis teknikal & sinyal prediksi Machine Learning (Random Forest) saat ini:"
+        "Berikut adalah data harga saham real-time Indonesia (BEI/IDX) beserta analisis teknikal & sinyal prediksi Machine Learning (XGBoost) saat ini:"
     ]
     for s in stocks:
         lines.append(
@@ -99,7 +99,7 @@ async def chat_with_mentor(messages: List[Dict[str, str]]) -> Dict[str, Any]:
             )
         }
 
-    # Ambil data real-time 6 saham secara dinamis untuk disuntikkan ke System Prompt (RAG)
+    # Ambil data real-time secara dinamis untuk disuntikkan ke System Prompt (RAG)
     stocks_summary = get_stocks_summary_for_prompt()
     
     full_system_prompt = (
@@ -107,7 +107,7 @@ async def chat_with_mentor(messages: List[Dict[str, str]]) -> Dict[str, Any]:
         "--- DATA REAL-TIME IDX SAHAM TERBARU & HASIL PREDIKSI MACHINE LEARNING ---\n"
         f"{stocks_summary}\n\n"
         "Gunakan data real-time di atas sebagai referensi utama jika pengguna bertanya tentang harga, sinyal, analisis teknikal (RSI, MACD), TP/SL, "
-        "atau rekomendasi terkait 6 saham tersebut (BBCA, ASII, TLKM, BMRI, GOTO, UNVR). Jawablah secara akurat sesuai data di atas."
+        "atau rekomendasi terkait saham-saham tersebut. Jawablah secara akurat sesuai data di atas."
     )
 
     # Siapkan payloads

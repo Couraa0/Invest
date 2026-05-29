@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-InvestAI — FastAPI Routes
-Endpoint REST API untuk prediksi saham real-time
+InvestAI — FastAPI Routes (v2)
+Endpoint REST API untuk prediksi saham real-time — 90+ saham IDX
 """
 
 import logging
@@ -15,6 +15,8 @@ from ..services.prediction_service import (
     get_market_overview,
     TICKERS,
     TICKER_NAMES,
+    TICKER_CATEGORIES,
+    TICKER_CATEGORY_MAP,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,7 @@ class StockSummary(BaseModel):
     ticker:      str
     symbol:      str
     name:        str
+    category:    str
     tanggal:     str
     harga:       float
     change_pct:  float
@@ -105,12 +108,92 @@ def _cache_set(key: str, value):
 # Endpoints
 # ================================================================
 
-@router.get("/stocks", summary="Prediksi semua 6 saham IDX")
-async def get_all_stocks():
+@router.get("/stocks/categories", summary="Daftar kategori & ticker saham IDX")
+async def get_categories():
     """
-    Ambil data real-time dan prediksi AI untuk semua 6 saham:
-    BBCA, ASII, TLKM, BMRI, GOTO, UNVR.
-    
+    Mengembalikan daftar sektor beserta ticker yang tersedia.
+    Dipakai frontend untuk membangun filter tab sektor.
+    """
+    result = {}
+    for cat, tickers in TICKER_CATEGORIES.items():
+        result[cat] = [
+            {
+                "ticker": t,
+                "symbol": t.replace(".JK", ""),
+                "name": TICKER_NAMES.get(t, t),
+            }
+            for t in tickers
+        ]
+    return {
+        "status": "success",
+        "total_tickers": len(TICKERS),
+        "categories": result,
+    }
+
+
+@router.get("/stocks/by-category/{category}", summary="Prediksi saham per sektor")
+async def get_stocks_by_category(category: str):
+    """
+    Prediksi AI untuk semua saham dalam satu sektor/kategori.
+    Memungkinkan lazy loading per tab di frontend.
+
+    - **category**: nama sektor (contoh: Perbankan%20%26%20Keuangan)
+    """
+    # URL decode manual jika perlu
+    category_decoded = category.replace("%20", " ").replace("%26", "&")
+
+    # Cari kategori yang cocok (case-insensitive prefix match)
+    matched_cat = None
+    for cat in TICKER_CATEGORIES:
+        if cat.lower() == category_decoded.lower() or category_decoded.lower() in cat.lower():
+            matched_cat = cat
+            break
+
+    if not matched_cat:
+        available = list(TICKER_CATEGORIES.keys())
+        raise HTTPException(
+            status_code=404,
+            detail=f"Kategori '{category_decoded}' tidak ditemukan. Pilih dari: {available}"
+        )
+
+    cache_key = f"cat_{matched_cat}"
+    cached = _cache_get(cache_key)
+    if cached:
+        logger.info(f"Cache hit: {cache_key}")
+        return {"status": "success", "category": matched_cat, "data": cached, "cached": True}
+
+    tickers_in_cat = TICKER_CATEGORIES[matched_cat]
+    results = []
+    errors = []
+
+    for ticker in tickers_in_cat:
+        try:
+            logger.info(f"🔍 Predicting [{matched_cat}]: {ticker}")
+            result = predict_stock(ticker)
+            results.append(result)
+        except Exception as e:
+            logger.error(f"❌ Error predicting {ticker}: {e}")
+            errors.append({"ticker": ticker, "error": str(e)})
+
+    _cache_set(cache_key, results)
+    return {
+        "status": "success",
+        "category": matched_cat,
+        "count": len(results),
+        "errors": errors,
+        "data": results,
+        "cached": False,
+    }
+
+
+@router.get("/stocks", summary="Prediksi semua 90+ saham IDX")
+async def get_all_stocks(limit: int = Query(default=0, description="Batas jumlah saham (0=semua)")):
+    """
+    Ambil data real-time dan prediksi AI untuk semua 90+ saham IDX.
+
+    ⚠️ Endpoint ini membutuhkan waktu 3-5 menit untuk 90+ saham.
+    Untuk UX lebih cepat, gunakan /api/stocks/by-category/{category}.
+
     Response dipakai oleh halaman:
     - Dashboard (watchlist cards)
     - Signals (stock grid + analisis)
@@ -118,12 +201,14 @@ async def get_all_stocks():
     cached = _cache_get("all_stocks")
     if cached:
         logger.info("Cache hit: all_stocks")
-        return {"status": "success", "data": cached, "cached": True}
+        data = cached[:limit] if limit > 0 else cached
+        return {"status": "success", "data": data, "count": len(data), "cached": True}
 
+    tickers_to_fetch = TICKERS[:limit] if limit > 0 else TICKERS
     results = []
-    errors  = []
+    errors = []
 
-    for ticker in TICKERS:
+    for ticker in tickers_to_fetch:
         try:
             logger.info(f"🔍 Predicting: {ticker}")
             result = predict_stock(ticker)
@@ -140,11 +225,12 @@ async def get_all_stocks():
 
     _cache_set("all_stocks", results)
     return {
-        "status":  "success",
-        "count":   len(results),
-        "errors":  errors,
-        "data":    results,
-        "cached":  False,
+        "status": "success",
+        "count": len(results),
+        "total_tickers": len(TICKERS),
+        "errors": errors,
+        "data": results,
+        "cached": False,
     }
 
 
@@ -155,18 +241,16 @@ async def get_stock_detail(
 ):
     """
     Ambil prediksi AI + data chart historis untuk satu saham.
-    
-    - **symbol**: kode saham tanpa .JK (contoh: BBCA, ASII)
+
+    - **symbol**: kode saham tanpa .JK (contoh: BBCA, TLKM, GOTO)
     - **period**: rentang chart (1D, 1W, 1M, 1Y, 5Y)
-    
-    Response dipakai oleh halaman StockDetail.
     """
     ticker = f"{symbol.upper()}.JK"
 
     if ticker not in TICKERS:
         raise HTTPException(
             status_code=404,
-            detail=f"Saham '{symbol}' tidak tersedia. Pilih dari: {[t.replace('.JK','') for t in TICKERS]}"
+            detail=f"Saham '{symbol}' tidak tersedia. Total {len(TICKERS)} saham IDX tersedia."
         )
 
     cache_key = f"stock_detail_{symbol}_{period}"
@@ -188,8 +272,8 @@ async def get_stock_detail(
 
     response = {
         "prediction": prediction,
-        "chart":      chart,
-        "period":     period,
+        "chart": chart,
+        "period": period,
     }
     _cache_set(cache_key, response)
 

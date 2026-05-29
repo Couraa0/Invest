@@ -109,11 +109,11 @@ export default function Dashboard() {
   const fetchStocks = async () => {
     setLoadingStocks(true);
     try {
-      const res = await fetch(`${API_BASE}/api/stocks`);
+      const res = await fetch(`${API_BASE}/api/stocks?limit=6`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      // Ambil hanya 3 saham untuk watchlist dashboard
-      setWatchlist((json.data ?? []).slice(0, 3));
+      // Ambil 6 saham untuk watchlist dashboard
+      setWatchlist((json.data ?? []).slice(0, 6));
       setLastUpdated(new Date());
     } catch {
       // Jika server tidak tersedia, gunakan placeholder kosong
@@ -228,12 +228,12 @@ export default function Dashboard() {
                   : 'IHSG terpantau bergerak dinamis seiring sentimen global.'
                 }
                 {' '}Untuk profil <span className="font-semibold text-secondary">{currentProfile.risk}</span> Anda,
-                emiten perbankan besar masih menjadi jangkar portofolio yang ideal.
+                XGBoost AI kini memantau <span className="font-semibold text-primary">90+ saham IDX</span> secara real-time.
               </p>
               <p className="text-sm text-on-surface-variant/60 leading-relaxed">
                 {watchlist.length > 0
-                  ? `Model AI terdeteksi sinyal ${watchlist.filter(s => s.signal === 'BULLISH').length} BULLISH dari ${watchlist.length} saham utama dalam watchlist Anda.`
-                  : 'Analisis AI sedang memproses data pasar terkini...'
+                  ? `XGBoost AI mendeteksi ${watchlist.filter(s => s.signal === 'BULLISH').length} sinyal BULLISH dari ${watchlist.length} saham watchlist Anda.`
+                  : 'XGBoost AI sedang memproses data pasar untuk 90+ saham IDX...'
                 }
               </p>
               <Link
@@ -373,7 +373,7 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {loadingStocks
               ? Array.from({ length: 3 }).map((_, i) => <WatchlistSkeleton key={i} />)
               : watchlist.length > 0

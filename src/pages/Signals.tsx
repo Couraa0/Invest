@@ -1,23 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Zap, 
-  Search, 
-  ArrowLeft, 
-  TrendingUp, 
+import {
+  Zap,
+  Search,
+  ArrowLeft,
+  TrendingUp,
   TrendingDown,
-  Newspaper, 
-  Activity, 
-  ShieldCheck,
+  Activity,
   CheckCircle2,
   ChevronRight,
   Sparkles,
-  PieChart,
   Target,
-  BarChart3,
   X,
   RefreshCw,
   AlertCircle,
+  Layers,
+  Filter,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import StockIcon from '../components/StockIcon';
@@ -28,6 +27,7 @@ interface StockData {
   ticker:      string;
   symbol:      string;
   name:        string;
+  category:    string;
   tanggal:     string;
   harga:       number;
   change_pct:  number;
@@ -52,14 +52,35 @@ interface StockData {
   ma_status:   string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+interface CategoryMeta {
+  ticker: string;
+  symbol: string;
+  name:   string;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const API_BASE = 'http://localhost:8000';
 
+// Sektor order & ikon
+const SECTOR_CONFIG: Record<string, { emoji: string; short: string }> = {
+  'Perbankan & Keuangan':      { emoji: '🏦', short: 'Perbankan' },
+  'Energi & Pertambangan':     { emoji: '⚡', short: 'Energi' },
+  'Consumer Goods & Retail':   { emoji: '🛒', short: 'Consumer' },
+  'Telekomunikasi & Teknologi':{ emoji: '📡', short: 'Telko' },
+  'Industri & Manufaktur':     { emoji: '🏭', short: 'Industri' },
+  'Properti & Konstruksi':     { emoji: '🏗️', short: 'Properti' },
+  'Healthcare & Farmasi':      { emoji: '🏥', short: 'Healthcare' },
+  'Infrastruktur & Utilitas':  { emoji: '🛣️', short: 'Infrastruktur' },
+  'Agribisnis':                { emoji: '🌾', short: 'Agri' },
+  'Media & Hiburan':           { emoji: '📺', short: 'Media' },
+  'Logistik & Pergudangan':    { emoji: '📦', short: 'Logistik' },
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function formatPrice(price: number): string {
-  if (price >= 1000) {
-    return price.toLocaleString('id-ID');
-  }
+  if (price >= 1000) return price.toLocaleString('id-ID');
   return price.toFixed(0);
 }
 
@@ -79,10 +100,10 @@ function BotIcon(props: React.SVGProps<SVGSVGElement>) {
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
-  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.35, ease: 'easeOut' } }),
+  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.05, duration: 0.3, ease: 'easeOut' } }),
 };
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function StockSkeleton() {
   return (
@@ -98,9 +119,19 @@ function StockSkeleton() {
         <div className="h-5 w-16 bg-slate-100 rounded-lg" />
       </div>
       <div className="h-8 w-20 bg-slate-200 rounded mb-1" />
-      <div className="h-3 w-16 bg-slate-100 rounded mt-3" />
+      <div className="h-1 w-full bg-slate-100 rounded-full mt-3" />
+      <div className="h-8 w-full bg-slate-100 rounded-xl mt-4" />
     </div>
   );
+}
+
+// ─── Category Loading State ───────────────────────────────────────────────────
+
+interface CategoryState {
+  data:    StockData[];
+  loading: boolean;
+  error:   string | null;
+  loaded:  boolean;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -111,42 +142,140 @@ export default function Signals() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showRecommendation, setShowRecommendation] = useState(false);
   const [search, setSearch] = useState('');
-
-  // Data state
-  const [stocks, setStocks] = useState<StockData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('Semua');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // ── Fetch semua saham ────────────────────────────────────────────────────
+  // Kategori dari API
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryMeta, setCategoryMeta] = useState<Record<string, CategoryMeta[]>>({});
 
-  const fetchStocks = async () => {
-    setLoading(true);
-    setError(null);
+  // Per-category data cache
+  const [categoryStates, setCategoryStates] = useState<Record<string, CategoryState>>({});
+
+  // Global error (gagal fetch categories)
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // Visible count untuk "Show More"
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  // Ref to track which categories have been fetched (avoids closure stale state)
+  const loadedRef = useRef<Set<string>>(new Set());
+
+  // ── Fetch daftar kategori saat mount ─────────────────────────────────────
+
+  const fetchCategories = useCallback(async () => {
+    setLoadingCategories(true);
+    setGlobalError(null);
+    // Reset loaded tracking on full refresh
+    loadedRef.current.clear();
+    setCategoryStates({});
     try {
-      const res = await fetch(`${API_BASE}/api/stocks`);
+      const res = await fetch(`${API_BASE}/api/stocks/categories`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      setStocks(json.data ?? []);
+      const cats = Object.keys(json.categories ?? {});
+      setCategories(cats);
+      setCategoryMeta(json.categories ?? {});
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setGlobalError(`Gagal terhubung ke AI server. Pastikan server berjalan di port 8000.\n(${msg})`);
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  // ── Fetch satu kategori (lazy) — stable ref via loadedRef ──────────────
+
+  const fetchCategory = useCallback(async (category: string) => {
+    if (loadedRef.current.has(category)) return; // already fetched
+    loadedRef.current.add(category); // mark as in-flight immediately
+
+    setCategoryStates(prev => ({
+      ...prev,
+      [category]: { data: [], loading: true, error: null, loaded: false },
+    }));
+
+    try {
+      const encoded = encodeURIComponent(category);
+      const res = await fetch(`${API_BASE}/api/stocks/by-category/${encoded}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const stocks: StockData[] = json.data ?? [];
+      setCategoryStates(prev => ({
+        ...prev,
+        [category]: { data: stocks, loading: false, error: null, loaded: true },
+      }));
       setLastUpdated(new Date());
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(`Gagal terhubung ke AI server. Pastikan server berjalan di port 8000.\n(${msg})`);
-    } finally {
-      setLoading(false);
+      loadedRef.current.delete(category); // allow retry on error
+      setCategoryStates(prev => ({
+        ...prev,
+        [category]: { data: [], loading: false, error: msg, loaded: false },
+      }));
     }
-  };
+  }, []); // stable — no deps needed, uses ref
+
+  // ── Auto-fetch when active category or categories list changes ───────────
 
   useEffect(() => {
-    fetchStocks();
-  }, []);
+    if (loadingCategories || categories.length === 0) return;
 
-  // ── Filter pencarian ─────────────────────────────────────────────────────
+    if (activeCategory !== 'Semua') {
+      fetchCategory(activeCategory);
+    } else {
+      // Sequential fetch across all categories
+      let cancelled = false;
+      const fetchAll = async () => {
+        for (const cat of categories) {
+          if (cancelled) break;
+          await fetchCategory(cat);
+        }
+      };
+      fetchAll();
+      return () => { cancelled = true; };
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, loadingCategories, categories.length]);
 
-  const filtered = stocks.filter(s =>
+  // ── Data yang ditampilkan ─────────────────────────────────────────────────
+
+  const allStocks: StockData[] = (() => {
+    if (activeCategory === 'Semua') {
+      const all: StockData[] = [];
+      for (const cat of categories) {
+        all.push(...(categoryStates[cat]?.data ?? []));
+      }
+      return all;
+    }
+    return categoryStates[activeCategory]?.data ?? [];
+  })();
+
+  const isCurrentLoading = (() => {
+    if (activeCategory === 'Semua') {
+      return categories.some(cat => categoryStates[cat]?.loading);
+    }
+    return categoryStates[activeCategory]?.loading ?? (!categoryStates[activeCategory]?.loaded);
+  })();
+
+  const filtered = allStocks.filter(s =>
     s.symbol.toLowerCase().includes(search.toLowerCase()) ||
-    s.name.toLowerCase().includes(search.toLowerCase())
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.category?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const displayed = filtered.slice(0, visibleCount);
+  const hasMore = filtered.length > visibleCount;
+
+  // Reset visible count when category/search changes
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [activeCategory, search]);
 
   // ── Mulai analisis ───────────────────────────────────────────────────────
 
@@ -156,11 +285,11 @@ export default function Signals() {
     setTimeout(() => {
       setIsAnalyzing(false);
       setView('analysis');
-    }, 1800);
+    }, 1500);
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Render: Loading screen
+  // Render: Analyzing screen
   // ─────────────────────────────────────────────────────────────────────────
 
   if (isAnalyzing) {
@@ -177,7 +306,7 @@ export default function Signals() {
           Menganalisis {selectedStock?.symbol}...
         </h2>
         <p className="text-sm text-on-surface-variant/60 max-w-xs">
-          Membedah fundamental, teknikal, dan sentimen pasar secara real-time.
+          XGBoost AI sedang membedah {selectedStock?.category} · {selectedStock?.name}
         </p>
         <div className="mt-6 flex gap-1.5">
           {[0, 1, 2].map((i) => (
@@ -189,10 +318,10 @@ export default function Signals() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Render: Error state
+  // Render: Global error (server not running)
   // ─────────────────────────────────────────────────────────────────────────
 
-  if (error) {
+  if (globalError) {
     return (
       <div className="space-y-5">
         <h1 className="text-2xl font-bold text-primary">Sinyal AI</h1>
@@ -202,7 +331,7 @@ export default function Signals() {
           </div>
           <div>
             <h2 className="font-bold text-primary mb-1">AI Server Tidak Terhubung</h2>
-            <p className="text-sm text-on-surface-variant/60 whitespace-pre-line max-w-sm">{error}</p>
+            <p className="text-sm text-on-surface-variant/60 whitespace-pre-line max-w-sm">{globalError}</p>
           </div>
           <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-left text-xs font-mono text-on-surface-variant/60 w-full max-w-sm">
             <p className="mb-1 font-semibold text-primary">Cara menjalankan AI server:</p>
@@ -211,7 +340,7 @@ export default function Signals() {
             <p>uvicorn app.main:app --port 8000</p>
           </div>
           <button
-            onClick={fetchStocks}
+            onClick={fetchCategories}
             className="btn-primary flex items-center gap-2"
           >
             <RefreshCw className="w-4 h-4" /> Coba Lagi
@@ -222,23 +351,24 @@ export default function Signals() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Render: Utama
+  // Render: Main
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-5 pb-28">
       <AnimatePresence mode="wait">
         {view === 'list' ? (
           <motion.div key="list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-5">
-            {/* Header */}
+
+            {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-primary tracking-tight">Pilih Saham untuk Analisis</h1>
+                <h1 className="text-2xl font-bold text-primary tracking-tight">Sinyal AI — 90+ Saham IDX</h1>
                 <p className="text-sm text-on-surface-variant/60 mt-1">
-                  Prediksi AI real-time dari model ML multi-saham IDX.
+                  Prediksi XGBoost real-time · {allStocks.length} saham termuat
                   {lastUpdated && (
                     <span className="ml-2 text-secondary font-semibold">
-                      Update: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      · {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
                 </p>
@@ -248,42 +378,146 @@ export default function Signals() {
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
                   <input
                     type="text"
-                    placeholder="Cari kode saham (BBCA, ASII...)"
+                    placeholder="Cari saham (BBCA, Energi...)"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="input-field pl-10 w-full"
                   />
                 </div>
                 <button
-                  onClick={fetchStocks}
-                  disabled={loading}
+                  onClick={() => {
+                    setCategoryStates({});
+                    fetchCategories();
+                  }}
+                  disabled={isCurrentLoading}
                   className="p-2.5 bg-white border border-slate-200 rounded-xl text-on-surface-variant hover:text-primary hover:border-primary/20 transition-all shadow-sm disabled:opacity-50"
                   title="Refresh data"
                 >
-                  <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                  <RefreshCw className={cn("w-4 h-4", isCurrentLoading && "animate-spin")} />
                 </button>
               </div>
             </div>
 
-            {/* Stock Grid */}
+            {/* ── Sector Filter Tabs ── */}
+            <div className="overflow-x-auto pb-1 -mx-1 px-1">
+              <div className="flex gap-2 min-w-max">
+                {/* "Semua" tab */}
+                <button
+                  onClick={() => setActiveCategory('Semua')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border",
+                    activeCategory === 'Semua'
+                      ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
+                      : "bg-white text-on-surface-variant/70 border-slate-200 hover:border-primary/20 hover:text-primary"
+                  )}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Semua
+                  <span className={cn(
+                    "px-1.5 py-0.5 rounded-md text-[9px] font-bold",
+                    activeCategory === 'Semua' ? "bg-white/20" : "bg-slate-100"
+                  )}>
+                    {allStocks.length || '90+'}
+                  </span>
+                </button>
+
+                {/* Per-sector tabs */}
+                {loadingCategories
+                  ? Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-9 w-24 rounded-xl bg-slate-100 animate-pulse" />
+                  ))
+                  : categories.map(cat => {
+                    const cfg = SECTOR_CONFIG[cat] ?? { emoji: '📊', short: cat.split(' ')[0] };
+                    const state = categoryStates[cat];
+                    const count = state?.data?.length ?? (categoryMeta[cat]?.length ?? 0);
+                    const isActive = activeCategory === cat;
+                    const isLoading = state?.loading;
+
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border",
+                          isActive
+                            ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
+                            : "bg-white text-on-surface-variant/70 border-slate-200 hover:border-primary/20 hover:text-primary"
+                        )}
+                      >
+                        <span>{cfg.emoji}</span>
+                        {cfg.short}
+                        {isLoading
+                          ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                          : (
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded-md text-[9px] font-bold",
+                              isActive ? "bg-white/20" : "bg-slate-100"
+                            )}>
+                              {count}
+                            </span>
+                          )
+                        }
+                      </button>
+                    );
+                  })
+                }
+              </div>
+            </div>
+
+            {/* ── Stats Bar ── */}
+            {allStocks.length > 0 && !search && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-3 gap-3"
+              >
+                {[
+                  {
+                    label: 'Bullish',
+                    value: allStocks.filter(s => s.signal === 'BULLISH').length,
+                    color: 'text-secondary',
+                    bg: 'bg-secondary/8 border-secondary/12',
+                  },
+                  {
+                    label: 'Bearish',
+                    value: allStocks.filter(s => s.signal === 'BEARISH').length,
+                    color: 'text-error',
+                    bg: 'bg-error/8 border-error/12',
+                  },
+                  {
+                    label: 'Confidence Rata-rata',
+                    value: allStocks.length
+                      ? `${(allStocks.reduce((a, s) => a + s.confidence, 0) / allStocks.length).toFixed(0)}%`
+                      : '—',
+                    color: 'text-primary',
+                    bg: 'bg-primary/6 border-primary/10',
+                  },
+                ].map((stat, i) => (
+                  <div key={i} className={cn("rounded-xl p-3 border text-center", stat.bg)}>
+                    <p className={cn("text-lg font-bold", stat.color)}>{stat.value}</p>
+                    <p className="text-[10px] text-on-surface-variant/50 font-medium mt-0.5">{stat.label}</p>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* ── Stock Grid ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {loading
+              {(isCurrentLoading && displayed.length === 0)
                 ? Array.from({ length: 6 }).map((_, i) => <StockSkeleton key={i} />)
-                : filtered.map((stock, i) => (
+                : displayed.map((stock, i) => (
                   <motion.div
-                    key={stock.symbol}
+                    key={stock.ticker}
                     custom={i} variants={fadeUp} initial="hidden" animate="visible"
                     className="card p-5 rounded-2xl hover:shadow-md hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200 group"
                   >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <StockIcon symbol={stock.symbol} />
-                        <div>
-                          <h3 className="text-sm font-bold text-primary">{stock.symbol}</h3>
-                          <p className="text-[10px] text-on-surface-variant/50 font-medium truncate max-w-[110px]">{stock.name}</p>
-                        </div>
-                      </div>
-                      {/* AI Signal Badge */}
+                    {/* Category badge */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40 flex items-center gap-1">
+                        <span>{SECTOR_CONFIG[stock.category]?.emoji ?? '📊'}</span>
+                        {SECTOR_CONFIG[stock.category]?.short ?? stock.category?.split(' ')[0]}
+                      </span>
+                      {/* Signal badge */}
                       <span className={cn(
                         "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
                         stock.signal === 'BULLISH'
@@ -292,6 +526,15 @@ export default function Signals() {
                       )}>
                         {stock.action}
                       </span>
+                    </div>
+
+                    {/* Stock identity */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <StockIcon symbol={stock.symbol} />
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-primary">{stock.symbol}</h3>
+                        <p className="text-[10px] text-on-surface-variant/50 font-medium truncate max-w-[130px]">{stock.name}</p>
+                      </div>
                     </div>
 
                     {/* Price */}
@@ -311,7 +554,7 @@ export default function Signals() {
                           {formatChange(stock.change_pct)}
                         </p>
                       </div>
-                      {/* Confidence meter */}
+                      {/* Confidence */}
                       <div className="text-right">
                         <p className="text-[10px] text-on-surface-variant/50 mb-1">AI Confidence</p>
                         <p className={cn(
@@ -329,7 +572,7 @@ export default function Signals() {
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${stock.confidence}%` }}
-                          transition={{ duration: 1, delay: 0.3 + i * 0.1 }}
+                          transition={{ duration: 1, delay: 0.2 + i * 0.04 }}
                           className={cn("h-full rounded-full", stock.signal === 'BULLISH' ? "bg-secondary" : "bg-error")}
                         />
                       </div>
@@ -344,12 +587,38 @@ export default function Signals() {
                   </motion.div>
                 ))
               }
+
+              {/* Loading more cards while fetching */}
+              {isCurrentLoading && displayed.length > 0 &&
+                Array.from({ length: 3 }).map((_, i) => <StockSkeleton key={`sk-${i}`} />)
+              }
             </div>
+
+            {/* ── Show More / Empty ── */}
+            {!isCurrentLoading && filtered.length === 0 && allStocks.length > 0 && (
+              <div className="text-center py-12 text-on-surface-variant/50 text-sm">
+                Tidak ada saham yang cocok dengan "{search}"
+              </div>
+            )}
+
+            {hasMore && (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setVisibleCount(v => v + 12)}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-primary hover:border-primary/20 hover:shadow-sm transition-all"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  Tampilkan lebih banyak ({filtered.length - visibleCount} tersisa)
+                </button>
+              </div>
+            )}
+
           </motion.div>
 
         ) : (
-          // ─── Analysis View ──────────────────────────────────────────────────────
+          // ─── Analysis View ────────────────────────────────────────────────────
           <motion.div key="analysis" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+
             {/* Analysis Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -362,15 +631,19 @@ export default function Signals() {
                 <div>
                   <h1 className="text-base font-bold text-primary">Analisis Saham {selectedStock?.symbol}</h1>
                   <p className="text-xs text-on-surface-variant/50">
-                    Data per {selectedStock?.tanggal} · Model Random Forest Multi-Stock
+                    Data per {selectedStock?.tanggal} · XGBoost AI Engine ·{' '}
+                    <span className="text-secondary font-semibold">
+                      {SECTOR_CONFIG[selectedStock?.category ?? '']?.emoji}{' '}
+                      {selectedStock?.category}
+                    </span>
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Stock Info Card */}
             {selectedStock && (
               <>
+                {/* Stock Info Card */}
                 <div className="card p-6 rounded-2xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                     <div className="flex items-center gap-4">
@@ -395,7 +668,8 @@ export default function Signals() {
                         </div>
                       </div>
                     </div>
-                    {/* Signal Badge */}
+
+                    {/* Signal badge */}
                     <div className={cn(
                       "px-6 py-3 rounded-2xl border text-center",
                       selectedStock.signal === 'BULLISH'
@@ -414,20 +688,20 @@ export default function Signals() {
                   </div>
                 </div>
 
-                {/* AI Summary + Rating */}
+                {/* AI Summary + Confidence Ring */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
                   <div className="lg:col-span-8 card p-6 rounded-2xl">
                     <div className="flex items-center gap-2.5 mb-4">
                       <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center text-secondary">
                         <Sparkles className="w-4 h-4" />
                       </div>
-                      <h3 className="text-sm font-bold text-primary">Ringkasan AI InvestAI</h3>
+                      <h3 className="text-sm font-bold text-primary">Ringkasan XGBoost AI</h3>
                     </div>
                     <p className="text-sm text-primary/75 leading-relaxed mb-5">
                       {selectedStock.symbol} menunjukkan sinyal <strong className={selectedStock.signal === 'BULLISH' ? 'text-secondary' : 'text-error'}>{selectedStock.signal}</strong>{' '}
                       dengan confidence <strong>{selectedStock.confidence.toFixed(1)}%</strong> ({selectedStock.strength}).
                       RSI berada di {selectedStock.rsi.toFixed(1)} ({selectedStock.rsi_status}),
-                      MACD {selectedStock.macd_status} (diff: {selectedStock.macd_diff.toFixed(4)}).
+                      MACD {selectedStock.macd_status} (diff: {selectedStock.macd_diff.toFixed(5)}).
                       Harga saat ini {selectedStock.ma_status} SMA20 (Rp {formatPrice(selectedStock.sma20)}).
                       Probabilitas naik {selectedStock.prob_naik.toFixed(1)}% vs turun {selectedStock.prob_turun.toFixed(1)}%.
                     </p>
@@ -437,6 +711,7 @@ export default function Signals() {
                         `RSI ${selectedStock.rsi_status}`,
                         `MACD ${selectedStock.macd_status}`,
                         selectedStock.ma_status,
+                        `${SECTOR_CONFIG[selectedStock.category]?.emoji ?? ''} ${selectedStock.category?.split(' ')[0]}`,
                       ].map((tag, i) => (
                         <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/6 border border-secondary/10 text-secondary rounded-lg text-xs font-semibold">
                           <CheckCircle2 className="w-3 h-3" /> {tag}
@@ -445,7 +720,7 @@ export default function Signals() {
                     </div>
                   </div>
 
-                  {/* AI Rating Ring */}
+                  {/* AI Confidence Ring */}
                   <div className="lg:col-span-4 card p-6 rounded-2xl flex flex-col items-center justify-center text-center">
                     <h3 className="stat-label mb-5">AI Confidence Score</h3>
                     <div className="relative w-36 h-36 mb-4">
@@ -478,7 +753,7 @@ export default function Signals() {
                   </div>
                 </div>
 
-                {/* Technical + News */}
+                {/* Technical + Target */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   {/* Technical Indicators */}
                   <div className="card p-5 rounded-2xl">
@@ -495,8 +770,8 @@ export default function Signals() {
                           up: selectedStock.rsi_status === 'Normal',
                         },
                         {
-                          label: 'MACD Diff',
-                          value: selectedStock.macd_diff.toFixed(4),
+                          label: 'MACD Histogram',
+                          value: selectedStock.macd_diff.toFixed(5),
                           status: selectedStock.macd_status,
                           up: selectedStock.macd_status === 'Bullish',
                         },
@@ -507,16 +782,16 @@ export default function Signals() {
                           up: selectedStock.ma_status === 'Di Atas MA',
                         },
                         {
-                          label: 'Stochastic %K',
+                          label: 'RSI (7) — Jangka Pendek',
                           value: selectedStock.stoch_k.toFixed(1),
-                          status: selectedStock.stoch_k > 80 ? 'Overbought' : selectedStock.stoch_k < 20 ? 'Oversold' : 'Normal',
-                          up: selectedStock.stoch_k >= 20 && selectedStock.stoch_k <= 80,
+                          status: selectedStock.stoch_k > 70 ? 'Overbought' : selectedStock.stoch_k < 30 ? 'Oversold' : 'Normal',
+                          up: selectedStock.stoch_k >= 30 && selectedStock.stoch_k <= 70,
                         },
                       ].map((item, i) => (
                         <div key={i} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0 last:pb-0">
                           <div>
                             <p className="text-xs font-semibold text-primary">{item.label}</p>
-                            <p className="stat-label mt-0.5">Data real-time · {selectedStock.tanggal}</p>
+                            <p className="stat-label mt-0.5">Real-time · {selectedStock.tanggal}</p>
                           </div>
                           <div className="text-right">
                             <p className={cn("text-sm font-bold", item.up ? "text-secondary" : "text-error")}>{item.value}</p>
@@ -601,7 +876,7 @@ export default function Signals() {
                           </div>
                           <div>
                             <h2 className="text-lg font-bold text-primary">Rekomendasi Final AI</h2>
-                            <p className="text-xs text-on-surface-variant/50 font-medium">Model Random Forest Multi-Stock</p>
+                            <p className="text-xs text-on-surface-variant/50 font-medium">XGBoost Engine · {selectedStock.category}</p>
                           </div>
                         </div>
 
@@ -619,10 +894,9 @@ export default function Signals() {
                             </span>
                           </div>
                           <p className="text-sm text-primary/75 leading-relaxed">
-                            Berdasarkan analisis teknikal real-time dan model ML multi-saham, kami merekomendasikan
-                            aksi <strong>{selectedStock.action}</strong> pada {selectedStock.symbol} di harga saat ini
-                            (Rp {formatPrice(selectedStock.harga)}).
-                            Confidence model: <strong>{selectedStock.confidence.toFixed(1)}%</strong>.
+                            Berdasarkan analisis XGBoost real-time ({selectedStock.confidence.toFixed(0)}% confidence),
+                            kami merekomendasikan aksi <strong>{selectedStock.action}</strong> pada {selectedStock.symbol}{' '}
+                            di harga saat ini (Rp {formatPrice(selectedStock.harga)}).
                           </p>
                         </div>
 

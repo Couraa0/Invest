@@ -89,3 +89,23 @@ Jika menggunakan *API keys* untuk servis eksternal, pastikan untuk mendefinisika
      ```
   3. Buka file `.env` baru tersebut, lalu isi `GROQ_API_KEY` Anda dengan API Key dari [Groq Console](https://console.groq.com/keys) (gratis).
 
+---
+
+## 🧠 Cara Kerja Sistem Prediksi AI (XGBoost Engine)
+
+InvestAI menggunakan **Machine Learning** untuk memprediksi pergerakan harga saham di Bursa Efek Indonesia (IDX). Berikut adalah gambaran singkat alur pemrosesan datanya:
+
+### 🍳 Analogi Pemrosesan
+1. **Bahan Mentah (Raw Data):** Data harga historis (Open, High, Low, Close, Volume) ditarik dari Yahoo Finance.
+2. **Bumbu Dapur (Features):** Dihitung **35 indikator teknikal** (RSI, MACD, Bollinger Bands, ATR, Volatility, dll.).
+3. **Koki Pintar (Model):** Algoritma **XGBoost** (`xgb_model.pkl`) mencicipi indikator tersebut untuk memprediksi arah harga saham.
+4. **Sajian Akhir (Output):** Menghasilkan rekomendasi **BUY/SELL**, target **Take Profit/Stop Loss**, dan **Confidence Score**.
+
+### 🔄 Alur Kerja Real-Time (Inference)
+Saat frontend meminta data prediksi untuk satu saham (misalnya `BBCA`):
+1. **FastAPI** (`backend/ai/app/services/prediction_service.py`) menarik data terbaru via `yfinance`.
+2. Sistem memproses **35 indikator teknikal** pada data tersebut secara real-time.
+3. Data hasil kalkulasi dimasukkan ke model `xgb_model.pkl` yang sudah di-load di memori server.
+4. Prediksi dan skor keyakinan dikirim kembali ke **React Frontend** dalam format **JSON** untuk dirender menjadi visualisasi grafik yang interaktif.
+
+
