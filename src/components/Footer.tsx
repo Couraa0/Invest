@@ -54,7 +54,7 @@ export default function Footer() {
               <h5 className="text-xs font-bold text-primary uppercase tracking-wider mb-4">{col.title}</h5>
               <ul className="space-y-2.5">
                 {col.links.map(link => (
-                  <li key={link.path}>
+                  <li key={link.label}>
                     <Link to={link.path} className="text-sm text-on-surface-variant/60 hover:text-primary transition-colors">{link.label}</Link>
                   </li>
                 ))}

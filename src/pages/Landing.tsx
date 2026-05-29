@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { 
-  ArrowRight, 
-  TrendingUp, 
-  BookOpen, 
-  Gamepad2, 
-  Zap, 
+import {
+  ArrowRight,
+  TrendingUp,
+  BookOpen,
+  Gamepad2,
+  Zap,
   Star,
   Users,
   Award,
@@ -53,14 +53,14 @@ const FaqItem: React.FC<{ q: string; a: string }> = ({ q, a }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div className="border-b border-slate-200">
-      <button 
-        onClick={() => setIsOpen(!isOpen)} 
+      <button
+        onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full py-5 text-left group"
       >
         <span className="text-sm font-medium text-slate-600 group-hover:text-primary transition-colors">{q}</span>
         <ChevronDown className={cn("w-5 h-5 text-slate-400 transition-transform duration-300", isOpen && "rotate-180")} />
       </button>
-      <motion.div 
+      <motion.div
         initial={false}
         animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
         className="overflow-hidden"
@@ -179,7 +179,7 @@ export default function Landing() {
               {/* Main card */}
               <div className="relative z-10 bg-white rounded-3xl p-3 shadow-[0_32px_80px_-16px_rgba(0,35,111,0.18)] border border-slate-100/80">
                 <img
-                  src="/landing_hero.png"
+                  src="/landing_hero.jpeg"
                   alt="InvestAI Interface"
                   className="rounded-2xl w-full"
                 />
