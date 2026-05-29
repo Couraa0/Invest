@@ -66,11 +66,12 @@ class ChartPoint(BaseModel):
 
 
 class MarketOverview(BaseModel):
-    ihsg:       float
-    change_pct: float
-    volume:     int
-    status:     str
-    chart:      list
+    ihsg:            float
+    change_pct:      float
+    volume:          int
+    status:          str
+    chart:           list
+    bullish_percent: Optional[float] = 50.0
 
 
 class MessageItem(BaseModel):

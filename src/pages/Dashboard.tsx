@@ -41,11 +41,12 @@ interface StockData {
 }
 
 interface MarketData {
-  ihsg:       number;
-  change_pct: number;
-  volume:     number;
-  status:     string;
-  chart:      { name: string; value: number }[];
+  ihsg:            number;
+  change_pct:      number;
+  volume:          number;
+  status:          string;
+  chart:           { name: string; value: number }[];
+  bullish_percent?: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -261,9 +262,9 @@ export default function Dashboard() {
               <p className={cn("text-xl font-bold", market?.status === 'Bullish' ? "text-secondary" : "text-error")}>
                 {market?.status ?? 'Memuat...'}
               </p>
-              {watchlist.length > 0 && (
+              {market && market.bullish_percent !== undefined && (
                 <p className="stat-label mt-1">
-                  Bullish: {Math.round((watchlist.filter(s => s.signal === 'BULLISH').length / watchlist.length) * 100)}%
+                  Bullish: {Math.round(market.bullish_percent)}%
                 </p>
               )}
             </div>

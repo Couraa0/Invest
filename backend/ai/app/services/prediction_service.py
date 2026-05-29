@@ -564,8 +564,41 @@ def get_chart_data(ticker: str, period: str = "1M") -> list[dict]:
 
 
 # ================================================================
-# Market Overview (IHSG proxy)
+# Market Overview (IHSG proxy) & Fast Sentiment
 # ================================================================
+
+def get_fast_market_sentiment() -> float:
+    """
+    Hitung persentase bullish secara cepat menggunakan 10 saham blue-chip utama.
+    Menggunakan ThreadPoolExecutor untuk paralel fetch/prediksi agar cepat.
+    """
+    import concurrent.futures
+    
+    representative_tickers = [
+        "BBCA.JK", "BBRI.JK", "BMRI.JK", "TLKM.JK", "ASII.JK",
+        "ADRO.JK", "GOTO.JK", "UNVR.JK", "KLBF.JK", "ANTM.JK"
+    ]
+    
+    # Pastikan model sudah ter-load sebelum thread pool agar thread-safe
+    load_model()
+    
+    def predict_one(t):
+        try:
+            return predict_stock(t)
+        except Exception:
+            return None
+
+    # Batasi max_workers agar tidak membebani network secara berlebihan
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        results = list(executor.map(predict_one, representative_tickers))
+        
+    valid_results = [r for r in results if r is not None]
+    if not valid_results:
+        return 50.0
+        
+    bullish_count = sum(1 for r in valid_results if r["signal"] == "BULLISH")
+    return round((bullish_count / len(valid_results)) * 100, 1)
+
 
 def get_market_overview() -> dict:
     """
@@ -594,6 +627,9 @@ def get_market_overview() -> dict:
         close_prev = float(prev["Close"])
         change_pct = ((close_now - close_prev) / close_prev) * 100
 
+        # Ambil sentimen pasar cepat secara paralel
+        bullish_pct = get_fast_market_sentiment()
+
         chart = []
         for idx, row in df.iterrows():
             chart.append({
@@ -607,6 +643,7 @@ def get_market_overview() -> dict:
             "volume": int(latest["Volume"]),
             "status": "Bullish" if change_pct > 0 else "Bearish",
             "chart": chart,
+            "bullish_percent": bullish_pct,
         }
     except Exception as e:
         logger.warning(f"Gagal ambil data IHSG: {e}")
@@ -616,4 +653,5 @@ def get_market_overview() -> dict:
             "volume": 0,
             "status": "N/A",
             "chart": [],
+            "bullish_percent": 50.0,
         }
