@@ -108,4 +108,46 @@ Saat frontend meminta data prediksi untuk satu saham (misalnya `BBCA`):
 3. Data hasil kalkulasi dimasukkan ke model `xgb_model.pkl` yang sudah di-load di memori server.
 4. Prediksi dan skor keyakinan dikirim kembali ke **React Frontend** dalam format **JSON** untuk dirender menjadi visualisasi grafik yang interaktif.
 
+---
+
+## 🛠️ Fitur & Modul AI yang Dikembangkan
+
+Platform InvestAI telah ditingkatkan secara signifikan dengan integrasi model prediksi canggih berbasis Machine Learning. Berikut adalah rincian fungsionalitas yang dikembangkan:
+
+### 1. 📈 Prediksi Sinyal Multi-Saham (90+ Ticker IDX)
+Model ML kini mendukung pemantauan dan prediksi real-time untuk **90+ saham blue-chip dan likuid di Bursa Efek Indonesia (IDX)**. Saham-saham ini dikelompokkan secara terstruktur ke dalam berbagai sektor:
+* **Perbankan & Keuangan:** BBCA, BMRI, BBNI, BBRI, BRIS, BTPS, ARTO, dll.
+* **Energi & Pertambangan:** ADRO, PTBA, ITMG, BUMI, MDKA, ANTM, INCO, MEDC, PGAS, dll.
+* **Consumer Goods & Retail:** UNVR, INDF, ICBP, KLBF, CPIN, MYOR, SIDO, ACES, MAPI, dll.
+* **Telekomunikasi & Teknologi:** TLKM, EXCL, ISAT, GOTO, BUKA, EMTK, TOWR, dll.
+* **Industri & Manufaktur:** ASII, UNTR, SMGR, INTP, AKRA, CTRA, dll.
+* **Properti, Infrastruktur, Agribisnis, Media, & Logistik** lainnya.
+
+### 2. 🤖 Engine Prediksi XGBoost (`xgb_model.pkl`)
+* Mengganti model placeholder sederhana dengan **XGBoost Classifier Model** (`xgb_model.pkl`, kapasitas 681KB) yang telah terlatih menggunakan data historis bursa Indonesia.
+* Memprediksi arah pergerakan harga saham berikutnya (NAIK/TURUN) lengkap dengan **Confidence Score (%)** serta target **Take Profit (TP)** dan **Stop Loss (SL)** otomatis.
+* Menggunakan fitur scaling berbasis `StandardScaler` dan penanganan data kosong defensif menggunakan `SimpleImputer`.
+
+### 3. 🧪 Feature Engineering Komprehensif (35 Indikator)
+Kalkulasi dinamis secara real-time dari data OHLCV ditarik dari Yahoo Finance untuk menghasilkan 35 fitur teknikal:
+* **Momentum & Returns:** Momentum harian multi-timeframe (3d, 5d, 10d, 20d) dan Lag Returns.
+* **Oscillators:** RSI (7d & 14d), RSI Divergence, dan RSI Slope.
+* **Trend Indicators:** MACD Line, Signal Line, MACD Histogram, dan MACD Slope.
+* **Volatility & Bands:** ATR (Average True Range), ATR Percentage, Volatility Regime, dan Bollinger Bands (Upper, Lower, Width, Percent).
+* **Volume Analysis:** Volume Z-score, Volume Ratio, OBV (On-Balance Volume) Trend, dan Volume-Price Divergence.
+* **Mean Reversion:** Jarak harga dari SMA (10d, 20d, 50d), Z-score 20d, serta jarak dari 52-week High & Low.
+* **Candlestick Patterns:** Body Ratio, Upper Wick, dan Lower Wick.
+
+### 4. 🌦️ Penanganan Hari Libur & Akhir Pekan (Volume-Filtering)
+* Sistem secara cerdas menyaring data perdagangan dengan volume nol (`Volume > 0`) untuk mengeliminasi baris kosong/placeholder saat bursa tutup atau libur nasional (seperti Idul Adha).
+* Menghindari masalah visualisasi **"0.00% Change"** stagnan, sehingga grafik dan indikator persentase naik/turun di Dashboard dan Signals tetap merefleksikan harga dan persentase perubahan dari **hari perdagangan aktif terakhir** yang valid.
+
+### 5. 📊 Indikator Sentimen Pasar Real-Time (IHSG Dashboard)
+* Menghitung persentase pasar yang sedang *Bullish* secara dinamis menggunakan **10 saham penggerak indeks utama (blue chips)** yang mewakili seluruh sektor penting.
+* Memanfaatkan multi-threading (**`ThreadPoolExecutor`**) di backend Python untuk memproses prediksi ke-10 saham secara paralel dalam waktu kurang dari 2 detik demi menjaga responsivitas server.
+* Hasil sentimen diumpankan langsung ke diagram mini dan indikator persentase sentimen di halaman utama Dashboard.
+
+### 💬 6. Mentorship Chat AI
+* Sistem chat mentorship interaktif di halaman `/mentorship` terintegrasi langsung dengan **Groq Cloud API** menggunakan model **Llama 3.1 8B Instant** untuk memberikan konsultasi finansial terpandu berdasarkan profil risiko pengguna (Pemula, Menengah, Berpengalaman).
+
 
