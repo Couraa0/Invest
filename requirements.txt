@@ -9,5 +9,5 @@ yfinance
 ta
 joblib
 httpx
-xgboost
+xgboost==1.7.6
 groq
