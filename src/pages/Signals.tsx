@@ -60,7 +60,7 @@ interface CategoryMeta {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 // Sektor order & ikon
 const SECTOR_CONFIG: Record<string, { emoji: string; short: string }> = {

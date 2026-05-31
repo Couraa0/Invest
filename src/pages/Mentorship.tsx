@@ -32,7 +32,7 @@ const sessions = [
   { title: 'Review Portofolio Q1', date: '1 minggu lalu' },
 ];
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 function renderContent(content: string) {
   const lines = content.split('\n');
