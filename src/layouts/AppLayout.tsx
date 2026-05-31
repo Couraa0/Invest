@@ -17,7 +17,7 @@ export default function AppLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface flex">
+    <div className="min-h-screen bg-surface">
       {/* Mobile overlay */}
       <div
         className={cn(
@@ -36,7 +36,7 @@ export default function AppLayout() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-72 flex flex-col min-h-screen w-full">
+      <div className="lg:ml-72 flex flex-col min-h-screen">
         <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 pt-16 px-5 md:px-8 pb-28 lg:pb-8 max-w-full overflow-x-hidden">
           <div className="py-6">

@@ -1,0 +1,5 @@
+{
+    "venvPath": "c:\\Users\\Rakha\\OneDrive\\Documents\\Invest\\backend\\ai",
+    "venv": "venv",
+    "extraPaths": ["backend/ai"]
+}

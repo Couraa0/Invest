@@ -9,6 +9,11 @@ cd /d "%~dp0"
 
 REM Install dependencies jika belum
 echo [1/2] Memeriksa dependencies...
+if not exist "venv\Scripts\activate.bat" (
+    echo Membuat virtual environment...
+    py -m venv venv
+)
+call venv\Scripts\activate
 pip install -r requirements.txt --quiet
 if errorlevel 1 (
     echo ERROR: Gagal install dependencies!

@@ -524,6 +524,7 @@ def get_chart_data(ticker: str, period: str = "1M") -> list[dict]:
         "1D": (2, "2m"),
         "1W": (7, "1h"),
         "1M": (35, "1d"),
+        "3M": (95, "1d"),
         "1Y": (370, "1d"),
         "5Y": (1830, "1wk"),
     }

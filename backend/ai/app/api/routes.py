@@ -296,6 +296,40 @@ async def get_market():
     return {"status": "success", "data": data, "cached": False}
 
 
+@router.get("/market/ihsg", summary="Chart IHSG dengan periode")
+async def get_ihsg_chart(
+    period: str = Query(default="1M", description="Period: 1D, 1W, 1M, 3M, 1Y, 5Y")
+):
+    """
+    Ambil data chart IHSG (^JKSE) dengan berbagai rentang waktu.
+    Dipakai oleh halaman Simulator sebagai benchmark pasar.
+    """
+    cache_key = f"ihsg_chart_{period}"
+    cached = _cache_get(cache_key)
+    if cached:
+        return {"status": "success", "data": cached, "period": period, "cached": True}
+
+    from ..services.prediction_service import get_chart_data as _get_chart
+    try:
+        chart = _get_chart("^JKSE", period)
+    except Exception as e:
+        logger.warning(f"Gagal ambil chart IHSG: {e}")
+        chart = []
+
+    # Also fetch latest overview for current price/change
+    overview = get_market_overview()
+
+    response = {
+        "ihsg": overview["ihsg"],
+        "change_pct": overview["change_pct"],
+        "status": overview["status"],
+        "bullish_percent": overview.get("bullish_percent", 50.0),
+        "chart": chart,
+    }
+    _cache_set(cache_key, response)
+    return {"status": "success", "data": response, "period": period, "cached": False}
+
+
 @router.delete("/cache", summary="Clear cache (dev only)")
 async def clear_cache():
     """Hapus semua cache — berguna saat development."""

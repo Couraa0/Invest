@@ -157,7 +157,7 @@ export default function Signals() {
   const [loadingCategories, setLoadingCategories] = useState(true);
 
   // Visible count untuk "Show More"
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [visibleCount, setVisibleCount] = useState(9);
 
   // Ref to track which categories have been fetched (avoids closure stale state)
   const loadedRef = useRef<Set<string>>(new Set());
@@ -274,7 +274,7 @@ export default function Signals() {
 
   // Reset visible count when category/search changes
   useEffect(() => {
-    setVisibleCount(12);
+    setVisibleCount(9);
   }, [activeCategory, search]);
 
   // ── Mulai analisis ───────────────────────────────────────────────────────
@@ -355,7 +355,7 @@ export default function Signals() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5 pb-28">
+    <div className="space-y-5 pb-28 overflow-x-hidden w-full">
       <AnimatePresence mode="wait">
         {view === 'list' ? (
           <motion.div key="list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-5">
@@ -604,7 +604,7 @@ export default function Signals() {
             {hasMore && (
               <div className="flex justify-center">
                 <button
-                  onClick={() => setVisibleCount(v => v + 12)}
+                  onClick={() => setVisibleCount(v => v + 9)}
                   className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-primary hover:border-primary/20 hover:shadow-sm transition-all"
                 >
                   <ChevronDown className="w-4 h-4" />

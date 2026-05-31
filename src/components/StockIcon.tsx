@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cn } from '../lib/utils';
 
 interface StockIconProps {
@@ -6,6 +7,8 @@ interface StockIconProps {
 }
 
 export default function StockIcon({ symbol, className }: StockIconProps) {
+  const [imgError, setImgError] = useState(false);
+
   const getStockBranding = (sym: string) => {
     switch (sym.toUpperCase()) {
       case 'BBCA':
@@ -30,6 +33,23 @@ export default function StockIcon({ symbol, className }: StockIconProps) {
   };
 
   const branding = getStockBranding(symbol);
+  const logoUrl = `https://assets.stockbit.com/logos/companies/${symbol.toUpperCase()}.png`;
+
+  if (!imgError) {
+    return (
+      <div className={cn(
+        "shrink-0 flex items-center justify-center rounded-xl overflow-hidden bg-white shadow-sm border border-black/5 p-1",
+        className || "w-12 h-12"
+      )}>
+        <img
+          src={logoUrl}
+          alt={`${symbol} logo`}
+          className="w-full h-full object-contain"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
