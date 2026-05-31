@@ -1,13 +1,11 @@
 fastapi
-uvicorn[standard]
+uvicorn
 pydantic
 scikit-learn
 pandas
 numpy
 python-dotenv
 yfinance
-ta
 joblib
 httpx
 xgboost
-groq
