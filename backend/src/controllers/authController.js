@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { poolPromise, sql } = require('../config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'investai_secret_key_2026';
-const JWT_EXPIRES = '7d';
+const JWT_EXPIRES = '3h';
 
 // POST /api/auth/register
 const register = async (req, res) => {

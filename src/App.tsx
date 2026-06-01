@@ -54,6 +54,9 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Route>
+
+        {/* Global fallback route */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
