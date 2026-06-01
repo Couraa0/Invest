@@ -251,7 +251,7 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
         exit={{ opacity: 0, x: "-50%", y: "-40%", scale: 0.97 }}
         transition={{ type: 'spring', damping: 26, stiffness: 320 }}
         onClick={e => e.stopPropagation()}
-        className="fixed top-1/2 left-1/2 z-50 w-[92%] sm:w-[480px] bg-white rounded-2xl shadow-2xl shadow-black/20 border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className="fixed top-1/2 left-1/2 z-50 w-[92%] sm:w-[640px] md:w-[768px] lg:w-[850px] bg-white rounded-2xl shadow-2xl shadow-black/20 border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
