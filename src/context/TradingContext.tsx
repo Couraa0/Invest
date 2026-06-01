@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { api } from '../lib/api';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ interface TradingContextType {
   positions: Position[];
   transactions: Transaction[];
   equityHistory: { date: string; value: number }[];
+  userId: string | null;
+  setUserId: (id: string) => void;
 
   buyStock: (symbol: string, name: string, price: number, lots: number) => { success: boolean; message: string };
   sellStock: (symbol: string, lots: number, currentPrice: number) => { success: boolean; message: string };
@@ -101,6 +104,42 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [positions, setPositions] = useState<Position[]>(initial.positions);
   const [transactions, setTransactions] = useState<Transaction[]>(initial.transactions);
   const [equityHistory, setEquityHistory] = useState(initial.equityHistory);
+  const [userId, setUserIdState] = useState<string | null>(
+    () => localStorage.getItem('investai_user_id')
+  );
+
+  const setUserId = useCallback((id: string) => {
+    setUserIdState(id);
+    localStorage.setItem('investai_user_id', id);
+  }, []);
+
+  // Sync portfolio from Azure SQL when userId is set
+  useEffect(() => {
+    if (!userId) return;
+    api.portfolio.get(userId).then(data => {
+      setCash(data.cash_balance);
+      // Rebuild positions from holdings (keep current prices if already loaded)
+      setPositions(prev => data.holdings.map(h => {
+        const existing = prev.find(p => p.symbol === h.stock_symbol);
+        const shares = h.total_lots * 100;
+        return existing
+          ? { ...existing, lots: h.total_lots, shares, buyPrice: h.average_price, totalCost: h.average_price * shares }
+          : {
+              id: h.stock_symbol,
+              symbol: h.stock_symbol,
+              name: h.stock_symbol,
+              buyPrice: h.average_price,
+              currentPrice: h.average_price,
+              lots: h.total_lots,
+              shares,
+              totalCost: h.average_price * shares,
+              unrealizedPnL: 0,
+              unrealizedPct: 0,
+              boughtAt: new Date().toISOString(),
+            };
+      }));
+    }).catch(() => { /* fallback to localStorage */ });
+  }, [userId]);
 
   // ── Derived values ────────────────────────────────────────────────────────
 
@@ -206,8 +245,14 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setEquityHistory(newHistory);
     persist(newCash, newPositions, newTxs, newHistory);
 
+    // Sync to Azure SQL (fire-and-forget)
+    if (userId) {
+      api.portfolio.buy(userId, { stock_symbol: symbol, lot_count: lots, price_per_share: price })
+        .catch(err => console.warn('Portfolio sync (buy) failed:', err.message));
+    }
+
     return { success: true, message: `Berhasil beli ${lots} lot ${symbol} @ Rp ${price.toLocaleString('id-ID')}` };
-  }, [cash, positions, transactions, equityHistory, appendEquity, persist]);
+  }, [cash, positions, transactions, equityHistory, appendEquity, persist, userId]);
 
   // ── Sell Stock ────────────────────────────────────────────────────────────
 
@@ -271,11 +316,17 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setEquityHistory(newHistory);
     persist(newCash, newPositions, newTxs, newHistory);
 
+    // Sync to Azure SQL (fire-and-forget)
+    if (userId) {
+      api.portfolio.sell(userId, { stock_symbol: symbol, lot_count: lots, price_per_share: currentPrice })
+        .catch(err => console.warn('Portfolio sync (sell) failed:', err.message));
+    }
+
     return {
       success: true,
       message: `Berhasil jual ${lots} lot ${symbol}. ${pnl >= 0 ? 'Profit' : 'Rugi'} Rp ${Math.abs(pnl).toLocaleString('id-ID')} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`,
     };
-  }, [cash, positions, transactions, equityHistory, appendEquity, persist]);
+  }, [cash, positions, transactions, equityHistory, appendEquity, persist, userId]);
 
   // ── Update Price ──────────────────────────────────────────────────────────
 
@@ -312,6 +363,8 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       positions,
       transactions,
       equityHistory,
+      userId,
+      setUserId,
       buyStock,
       sellStock,
       updatePrice,

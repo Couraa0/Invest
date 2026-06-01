@@ -18,8 +18,9 @@ import {
   X,
   Search
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '../lib/utils';
+import { api } from '../lib/api';
 
 const suggestedTopics = [
   { icon: TrendingUp, label: 'Apa saham blue chip?', color: 'text-primary' },
@@ -28,18 +29,8 @@ const suggestedTopics = [
   { icon: Zap, label: 'Sektor cuan minggu ini', color: 'text-secondary' },
 ];
 
-const sessions = [
-  { title: 'Analisis Saham BBCA', date: '2h ago' },
-  { title: 'Strategi Dividen Investing', date: 'Kemarin' },
-  { title: 'Apa itu Right Issue?', date: '3 hari lalu' },
-  { title: 'Review Portofolio Q1', date: '1 minggu lalu' },
-  { title: 'Kinerja Sektor Bank 2026', date: '2 minggu lalu' },
-  { title: 'Cara Baca Laporan Keuangan', date: '3 minggu lalu' },
-  { title: 'Prospek Saham Teknologi', date: '1 bulan lalu' },
-  { title: 'Setup Trading Swing', date: '1 bulan lalu' },
-  { title: 'Psikologi Trading', date: '2 bulan lalu' },
-  { title: 'Manajemen Risiko', date: '2 bulan lalu' },
-];
+// Demo user ID — production: set this from your auth system
+const DEMO_USER_ID = localStorage.getItem('investai_user_id') || '';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
@@ -76,6 +67,8 @@ function renderContent(content: string) {
   });
 }
 
+interface DbSession { id: string; title: string; updated_at: string; }
+
 export default function Mentorship() {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Halo! Saya InvestAI Mentor. Ada yang ingin kamu tanyakan seputar pasar saham hari ini? Saya bisa membantu memahami laporan keuangan, membaca grafik, atau memberikan edukasi strategi investasi.' }
@@ -86,7 +79,64 @@ export default function Mentorship() {
   const [searchSession, setSearchSession] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const filteredSessions = sessions.filter(session => 
+  // ── DB sessions state ─────────────────────────────────────────────────────
+  const [sessions, setSessions] = useState<DbSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const userId = DEMO_USER_ID;
+
+  // Load sessions from backend on mount
+  useEffect(() => {
+    if (!userId) return;
+    api.mentorship.getSessions(userId)
+      .then(data => setSessions(data.map(s => ({ id: s.id, title: s.title, updated_at: s.updated_at }))))
+      .catch(() => { /* backend not reachable – silent */ });
+  }, [userId]);
+
+  // Load messages when switching to a session
+  const loadSession = useCallback(async (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    setShowMobileSidebar(false);
+    try {
+      const msgs = await api.mentorship.getMessages(sessionId);
+      if (msgs.length > 0) {
+        setMessages(msgs.map(m => ({ role: m.sender_role === 'ai' ? 'assistant' : m.sender_role, content: m.content })));
+      } else {
+        setMessages([{ role: 'assistant', content: 'Sesi dimulai. Apa yang ingin kamu tanyakan?' }]);
+      }
+    } catch {
+      setMessages([{ role: 'assistant', content: 'Gagal memuat riwayat sesi.' }]);
+    }
+  }, []);
+
+  // Create a new session in DB
+  const handleNewSession = useCallback(async () => {
+    const welcomeMsg = 'Halo! Sesi baru dimulai. Ada yang ingin kamu tanyakan seputar investasi?';
+    if (userId) {
+      try {
+        const session = await api.mentorship.createSession(userId, 'New Session');
+        setSessions(prev => [{ id: session.id, title: session.title, updated_at: session.created_at }, ...prev]);
+        setActiveSessionId(session.id);
+        // Persist opening message
+        api.mentorship.addMessage(session.id, 'ai', welcomeMsg).catch(() => {});
+      } catch { setActiveSessionId(null); }
+    }
+    setMessages([{ role: 'assistant', content: welcomeMsg }]);
+  }, [userId]);
+
+  // Delete session from DB
+  const handleDeleteSession = useCallback(async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.mentorship.deleteSession(sessionId);
+    } catch { /* ignore */ }
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(null);
+      setMessages([{ role: 'assistant', content: 'Halo! Ada yang ingin kamu tanyakan?' }]);
+    }
+  }, [activeSessionId]);
+
+  const filteredSessions = sessions.filter(session =>
     session.title.toLowerCase().includes(searchSession.toLowerCase())
   );
 
@@ -106,28 +156,36 @@ export default function Mentorship() {
     setIsTyping(true);
 
     try {
+      // Save user message to DB
+      if (activeSessionId) {
+        api.mentorship.addMessage(activeSessionId, 'user', userMsg).catch(() => {});
+      }
+
       const response = await fetch(`${API_BASE}/api/mentor/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
+          messages: updatedMessages.map(msg => ({ role: msg.role, content: msg.content }))
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
 
       const data = await response.json();
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.content || 'Gagal memproses jawaban dari AI.'
-      }]);
+      const aiContent = data.content || 'Gagal memproses jawaban dari AI.';
+      setMessages(prev => [...prev, { role: 'assistant', content: aiContent }]);
+
+      // Save AI reply to DB
+      if (activeSessionId) {
+        api.mentorship.addMessage(activeSessionId, 'ai', aiContent).catch(() => {});
+        // Auto-update session title from first user message
+        const currentSession = sessions.find(s => s.id === activeSessionId);
+        if (currentSession?.title === 'New Session') {
+          const autoTitle = userMsg.slice(0, 50);
+          api.mentorship.updateTitle(activeSessionId, autoTitle).catch(() => {});
+          setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, title: autoTitle } : s));
+        }
+      }
     } catch (error) {
       console.error('Error chatting with mentor:', error);
       setMessages(prev => [...prev, {
@@ -158,7 +216,7 @@ export default function Mentorship() {
           </button>
         </div>
 
-        <button className="flex items-center justify-center gap-2.5 w-full py-3 bg-primary text-white rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all group">
+        <button onClick={handleNewSession} className="flex items-center justify-center gap-2.5 w-full py-3 bg-primary text-white rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all group">
           <div className="w-6 h-6 bg-white/15 rounded-lg flex items-center justify-center group-hover:rotate-90 transition-transform">
             <Plus className="w-3.5 h-3.5" />
           </div>
@@ -187,15 +245,26 @@ export default function Mentorship() {
 
           <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
             {filteredSessions.length > 0 ? (
-              filteredSessions.map((session, i) => (
+              filteredSessions.map((session) => (
                 <div
-                  key={i}
-                  className="group cursor-pointer p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all"
+                  key={session.id}
+                  onClick={() => loadSession(session.id)}
+                  className={cn(
+                    "group cursor-pointer p-3 rounded-xl border transition-all",
+                    activeSessionId === session.id
+                      ? "bg-primary/5 border-primary/15"
+                      : "hover:bg-slate-50 border-transparent hover:border-slate-100"
+                  )}
                 >
                   <h4 className="text-xs font-semibold text-primary truncate mb-0.5">{session.title}</h4>
                   <div className="flex items-center justify-between">
-                    <p className="stat-label">{session.date}</p>
-                    <MoreVertical className="w-3 h-3 text-on-surface-variant/0 group-hover:text-on-surface-variant/30 transition-colors" />
+                    <p className="stat-label">{new Date(session.updated_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</p>
+                    <button
+                      onClick={(e) => handleDeleteSession(session.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-error/50 hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               ))

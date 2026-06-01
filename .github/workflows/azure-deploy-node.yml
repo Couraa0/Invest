@@ -1,0 +1,50 @@
+name: Deploy Node.js Backend to Azure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/src/**'
+      - 'backend/package.json'
+      - 'backend/index.js'
+      - '.github/workflows/azure-deploy-node.yml'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: 'invest-ai-node' # Sesuaikan dengan nama Web App Node.js Anda
+  NODE_VERSION: '20.x'                # Sesuaikan dengan versi Node.js yang Anda gunakan
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install dependencies and build
+        run: |
+          cd backend
+          npm install --production
+
+      - name: Package backend for Azure
+        run: |
+          # Masuk ke folder backend agar package.json berada di root zip
+          cd backend
+          # Buat arsip zip berisi folder src, node_modules, index.js, dan package.json
+          zip -r ../release-node.zip src/ node_modules/ index.js package.json
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_NODE_PUBLISH_PROFILE }}
+          package: release-node.zip

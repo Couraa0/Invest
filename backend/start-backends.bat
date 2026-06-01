@@ -1,15 +1,38 @@
 @echo off
-echo Starting InvestAI Backends...
+echo ============================================
+echo  InvestAI — Starting All Backends
+echo ============================================
+echo.
+
+REM
+cd /d "%~dp0"
+
+echo [1/2] Memeriksa dependencies Express Node.js...
+if not exist "node_modules\" (
+    echo Menginstal npm packages...
+    call npm install
+)
+
+echo [2/2] Memeriksa dependencies Python AI (FastAPI)...
+cd ai
+if not exist "venv\Scripts\activate.bat" (
+    echo Membuat virtual environment...
+    py -m venv venv
+)
+cd ..
 
 echo.
-echo [1/2] Starting Express Node.js Backend...
-start "Express Backend" cmd /k "npm run dev"
-
-echo [2/2] Starting Python AI Backend (FastAPI)...
-start "AI Backend" cmd /k "cd ai && call venv\Scripts\activate && uvicorn app.main:app --reload --port 8000"
-
+echo ============================================
+echo  Menjalankan kedua backend...
+echo  Tekan Ctrl+C untuk menghentikan semuanya.
+echo  Express API: http://localhost:5000
+echo  FastAPI AI : http://localhost:8000
+echo ============================================
 echo.
-echo Both backends are starting in separate windows.
-echo Express API runs on port 5000.
-echo FastAPI AI runs on port 8000.
-pause
+
+REM Menjalankan Express di background terminal yang sama
+start /B npm run dev
+
+REM Menjalankan FastAPI di background terminal yang sama
+cd ai
+call venv\Scripts\activate && pip install -r requirements.txt --quiet && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

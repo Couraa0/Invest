@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { api, DbUser, setToken, clearToken, getToken } from '../lib/api';
 
 type InvestorLevel = 'Pemula' | 'Menengah' | 'Berpengalaman';
 
@@ -6,7 +7,11 @@ interface UserContextType {
   investorLevel: InvestorLevel;
   setInvestorLevel: (level: InvestorLevel) => void;
   isAuthenticated: boolean;
-  login: () => void;
+  user: DbUser | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  loginWithGoogle: (token: string) => Promise<{ success: boolean; message: string }>;
+  register: (email: string, password: string, fullName: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   hasCompletedOnboarding: boolean;
   completeOnboarding: (level: InvestorLevel) => void;
@@ -15,9 +20,15 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<DbUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('investai_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!getToken());
 
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
     return localStorage.getItem('hasCompletedOnboarding') === 'true';
@@ -28,24 +39,86 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return (saved as InvestorLevel) || 'Pemula';
   });
 
+  // Verify token on mount
+  useEffect(() => {
+    const token = getToken();
+    if (!token) { setIsLoading(false); return; }
+    api.auth.me()
+      .then(userData => {
+        setUser(userData);
+        setIsAuthenticated(true);
+        localStorage.setItem('investai_user', JSON.stringify(userData));
+        localStorage.setItem('investai_user_id', userData.id);
+      })
+      .catch(() => {
+        // Token invalid
+        clearToken();
+        setUser(null);
+        setIsAuthenticated(false);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
   const setInvestorLevel = (level: InvestorLevel) => {
     setInvestorLevelState(level);
     localStorage.setItem('investorLevel', level);
   };
 
-  const login = () => {
-    setIsAuthenticated(true);
-    localStorage.setItem('isAuthenticated', 'true');
-  };
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await api.auth.login({ email, password });
+      setToken(res.token);
+      setUser(res.user);
+      setIsAuthenticated(true);
+      localStorage.setItem('investai_user', JSON.stringify(res.user));
+      localStorage.setItem('investai_user_id', res.user.id);
+      return { success: true, message: 'Login berhasil!' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Login gagal' };
+    }
+  }, []);
 
-  const logout = () => {
+  const loginWithGoogle = useCallback(async (token: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await api.auth.googleLogin(token);
+      setToken(res.token);
+      setUser(res.user);
+      setIsAuthenticated(true);
+      localStorage.setItem('investai_user', JSON.stringify(res.user));
+      localStorage.setItem('investai_user_id', res.user.id);
+      return { success: true, message: 'Login Google berhasil!' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Login Google gagal' };
+    }
+  }, []);
+
+  const register = useCallback(async (email: string, password: string, fullName: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await api.auth.register({ email, password, full_name: fullName });
+      setToken(res.token);
+      setUser(res.user);
+      setIsAuthenticated(true);
+      localStorage.setItem('investai_user', JSON.stringify(res.user));
+      localStorage.setItem('investai_user_id', res.user.id);
+      return { success: true, message: 'Registrasi berhasil!' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Registrasi gagal' };
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    clearToken();
+    setUser(null);
     setIsAuthenticated(false);
     setHasCompletedOnboarding(false);
     setInvestorLevel('Pemula');
+    localStorage.removeItem('investai_user');
+    localStorage.removeItem('investai_user_id');
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('hasCompletedOnboarding');
     localStorage.removeItem('investorLevel');
-  };
+    localStorage.removeItem('paper_trading_state');
+  }, []);
 
   const completeOnboarding = (level: InvestorLevel) => {
     setInvestorLevel(level);
@@ -58,7 +131,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       investorLevel, 
       setInvestorLevel,
       isAuthenticated,
+      user,
+      isLoading,
       login,
+      loginWithGoogle,
+      register,
       logout,
       hasCompletedOnboarding,
       completeOnboarding
