@@ -77,7 +77,6 @@ const LOADING_STEPS: LoadingStep[] = [
   { key: 'report',   label: 'Generating Report...',   done: false },
 ];
 
-const STEP_DURATIONS = [8000, 15000, 10000]; // approx ms per step
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -143,26 +142,6 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Simulate step progression while loading
-  useEffect(() => {
-    if (phase !== 'loading') return;
-    let step = 0;
-    setCurrentStep(0);
-    setLoadingSteps(LOADING_STEPS.map(s => ({ ...s, done: false })));
-
-    const advance = (idx: number) => {
-      if (idx >= LOADING_STEPS.length) return;
-      const timer = setTimeout(() => {
-        setLoadingSteps(prev => prev.map((s, i) => i < idx ? { ...s, done: true } : s));
-        setCurrentStep(idx + 1);
-        advance(idx + 1);
-      }, STEP_DURATIONS[idx]);
-      return timer;
-    };
-    const t = advance(step);
-    return () => { if (t) clearTimeout(t); };
-  }, [phase]);
-
   const handleAnalyze = async () => {
     if (!stock) return;
     setPhase('loading');
@@ -170,8 +149,12 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
     setErrorMsg('');
     setShowArticles(false);
 
+    // Initialize loading steps
+    setLoadingSteps(LOADING_STEPS.map(s => ({ ...s, done: false })));
+    setCurrentStep(0);
+
     try {
-      const res = await fetch(`${apiBase}/api/news/analyze`, {
+      const res = await fetch(`${apiBase}/api/news/analyze/stream`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ ticker: stock.ticker, days: selectedDays }),
@@ -182,11 +165,61 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
         throw new Error(errData.detail || `HTTP ${res.status}`);
       }
 
-      const data: NewsResult = await res.json();
-      setResult(data);
-      setLoadingSteps(prev => prev.map(s => ({ ...s, done: true })));
-      // Short delay for UX — show all steps green before result
-      setTimeout(() => setPhase('result'), 600);
+      if (!res.body) {
+        throw new Error("Tidak ada data stream dari server.");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        // Save the last incomplete line
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const cleanLine = line.replace(/^data:\s*/, "").trim();
+          if (!cleanLine) continue;
+
+          try {
+            const parsed = JSON.parse(cleanLine);
+            
+            if (parsed.status === 'start') {
+              setCurrentStep(0);
+            } else if (parsed.status === 'progress') {
+              if (parsed.step === 'analyze_sentiment') {
+                // Fetch news is done, starting sentiment analysis
+                setLoadingSteps(prev => prev.map((s, i) => i === 0 ? { ...s, done: true } : s));
+                setCurrentStep(1);
+              } else if (parsed.step === 'generate_report') {
+                // Sentiment analysis is done, starting report generation
+                setLoadingSteps(prev => prev.map((s, i) => i <= 1 ? { ...s, done: true } : s));
+                setCurrentStep(2);
+              }
+            } else if (parsed.status === 'complete') {
+              const data: NewsResult = parsed.result;
+              setResult(data);
+              setLoadingSteps(prev => prev.map(s => ({ ...s, done: true })));
+              setCurrentStep(3);
+              // Short delay for UX — show all steps green before result
+              setTimeout(() => setPhase('result'), 600);
+            } else if (parsed.status === 'error') {
+              throw new Error(parsed.message || "Gagal melakukan analisis berita.");
+            }
+          } catch (err) {
+            console.error("Error parsing stream chunk:", err);
+            // If it is our thrown error, rethrow it to trigger the catch block
+            if (err instanceof Error && (err.message || "").includes("Gagal")) {
+              throw err;
+            }
+          }
+        }
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setErrorMsg(msg);

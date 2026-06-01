@@ -12,14 +12,15 @@ echo [1/2] Memeriksa dependencies...
 if not exist "venv\Scripts\activate.bat" (
     echo Membuat virtual environment...
     py -m venv venv
+    call venv\Scripts\activate
+    pip install -r requirements.txt
+    if errorlevel 1 (
+        echo ERROR: Gagal install dependencies!
+        pause
+        exit /b 1
+    )
 )
 call venv\Scripts\activate
-pip install -r requirements.txt --quiet
-if errorlevel 1 (
-    echo ERROR: Gagal install dependencies!
-    pause
-    exit /b 1
-)
 
 echo [2/2] Menjalankan FastAPI server...
 echo.

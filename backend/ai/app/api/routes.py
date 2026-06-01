@@ -480,3 +480,76 @@ async def analyze_stock_news(request: NewsAnalyzeRequest):
         f"{response_data['article_count']} artikel)"
     )
     return response_data
+
+
+@router.post(
+    "/news/analyze/stream",
+    summary="Analisis berita saham via LangGraph AI Agent (Streaming)",
+    tags=["news"],
+)
+async def analyze_stock_news_stream(request: NewsAnalyzeRequest):
+    """
+    Jalankan LangGraph News Analysis Agent untuk satu saham dengan streaming progress updates (SSE).
+    """
+    import time as _time
+    import json
+    import asyncio
+    from fastapi.responses import StreamingResponse
+
+    # Normalisasi ticker
+    ticker = request.ticker.upper().strip()
+    if not ticker.endswith(".JK"):
+        ticker = f"{ticker}.JK"
+    days = request.days
+
+    # Cache check
+    cache_key = f"news_{ticker}_{days}"
+    if cache_key in _news_analyze_cache:
+        cached_data, cached_ts = _news_analyze_cache[cache_key]
+        if _time.time() - cached_ts < NEWS_CACHE_TTL:
+            logger.info(f"📦 Cache hit (stream): {cache_key}")
+            async def cache_generator():
+                yield f"data: {json.dumps({'status': 'complete', 'result': {**cached_data, 'status': 'success (cached)'}})}\n\n"
+            return StreamingResponse(cache_generator(), media_type="text/event-stream")
+
+    logger.info(f"🚀 News analysis (stream): {ticker} ({days} hari)")
+
+    async def event_generator():
+        try:
+            from ..services.news_agent import analyze_ticker_stream
+        except ImportError as e:
+            logger.error(f"❌ Import error news_agent: {e}")
+            yield f"data: {json.dumps({'status': 'error', 'message': 'LangGraph dependencies belum terinstall.'})}\n\n"
+            return
+
+        sync_gen = analyze_ticker_stream(ticker, days)
+
+        def get_next(gen):
+            try:
+                return next(gen)
+            except StopIteration:
+                return None
+            except Exception as e:
+                logger.error(f"Error in analyze_ticker_stream generator: {e}")
+                return {"status": "error", "message": str(e)}
+
+        while True:
+            item = await asyncio.to_thread(get_next, sync_gen)
+            if item is None:
+                break
+            
+            # If the generator yields an error, stop and send it
+            if isinstance(item, dict) and item.get("status") == "error":
+                yield f"data: {json.dumps(item)}\n\n"
+                break
+
+            # If completed, cache the result
+            if isinstance(item, dict) and item.get("status") == "complete":
+                result_data = item.get("result")
+                _news_analyze_cache[cache_key] = (result_data, _time.time())
+                logger.info(f"✅ Cache saved (stream): {cache_key}")
+
+            yield f"data: {json.dumps(item)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+

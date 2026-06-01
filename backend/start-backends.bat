@@ -18,6 +18,9 @@ cd ai
 if not exist "venv\Scripts\activate.bat" (
     echo Membuat virtual environment...
     py -m venv venv
+    call venv\Scripts\activate.bat
+    echo Menginstal requirements AI (FastAPI)...
+    pip install -r requirements.txt
 )
 cd ..
 
@@ -30,9 +33,10 @@ echo  FastAPI AI : http://localhost:8000
 echo ============================================
 echo.
 
-REM Menjalankan Express di background terminal yang sama
-start /B npm run dev
+REM Menjalankan Express
+start /B "" npm run dev
 
-REM Menjalankan FastAPI di background terminal yang sama
+REM Menjalankan FastAPI 
 cd ai
-call venv\Scripts\activate && pip install -r requirements.txt --quiet && venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+call venv\Scripts\activate.bat
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

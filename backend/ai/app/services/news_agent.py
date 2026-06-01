@@ -446,3 +446,101 @@ def analyze_ticker(ticker: str, lookback_days: int = 30) -> dict:
     agent = _get_agent()
     result = agent.invoke(initial_state)
     return result
+
+
+def analyze_ticker_stream(ticker: str, lookback_days: int = 30):
+    """
+    Generator version of analyze_ticker.
+    Yields step-by-step progress events:
+    - {"status": "start", "step": "fetch_news", "message": "..."}
+    - {"status": "progress", "step": "analyze_sentiment", "message": "..."}
+    - {"status": "progress", "step": "generate_report", "message": "..."}
+    - {"status": "complete", "result": {...}}
+    """
+    if not ticker.endswith('.JK'):
+        ticker = f"{ticker.upper()}.JK"
+
+    logger.info(f"🚀 Memulai analisis stream: {ticker} ({lookback_days} hari)")
+
+    initial_state: NewsAnalysisState = {
+        'ticker':        ticker,
+        'lookback_days': lookback_days,
+        'raw_articles':  [],
+        'article_count': 0,
+        'sentiment_data': None,
+        'final_report':  None,
+        'error':         None,
+    }
+
+    agent = _get_agent()
+    
+    yield {
+        "status": "start",
+        "step": "fetch_news",
+        "message": f"Memulai analisis: {ticker} ({lookback_days} hari)"
+    }
+
+    current_state = initial_state
+    try:
+        # LangGraph agent.stream runs the nodes sequentially
+        # and yields updates: {node_name: state_update}
+        for update in agent.stream(initial_state):
+            if not update:
+                continue
+            node_name = list(update.keys())[0]
+            node_output = update[node_name]
+            
+            # Merge node output
+            current_state = {**current_state, **node_output}
+
+            if node_name == 'fetch_news':
+                yield {
+                    "status": "progress",
+                    "step": "analyze_sentiment",
+                    "message": f"Ditemukan {current_state.get('article_count', 0)} artikel. Menganalisis sentimen..."
+                }
+            elif node_name == 'analyze_sentiment':
+                yield {
+                    "status": "progress",
+                    "step": "generate_report",
+                    "message": "Analisis sentimen selesai. Menyusun laporan ringkasan..."
+                }
+            elif node_name == 'generate_report':
+                # Final step of graph, now build response_data
+                sentiment_data = current_state.get("sentiment_data") or {}
+                articles_raw   = current_state.get("raw_articles") or []
+                
+                response_data = {
+                    "status":          "success",
+                    "ticker":          ticker.replace(".JK", ""),
+                    "sentiment":       sentiment_data.get("overall_sentiment", "NETRAL"),
+                    "sentiment_score": int(sentiment_data.get("sentiment_score", 0)),
+                    "confidence":      sentiment_data.get("confidence", "RENDAH"),
+                    "article_count":   current_state.get("article_count", 0),
+                    "key_topics":      sentiment_data.get("key_topics", []),
+                    "risk_factors":    sentiment_data.get("risk_factors", []),
+                    "catalysts":       sentiment_data.get("catalysts", []),
+                    "final_report":    current_state.get("final_report") or "Laporan tidak tersedia.",
+                    "articles":        [
+                        {
+                            "title":   a.get("title", ""),
+                            "link":    a.get("link", ""),
+                            "source":  a.get("source", ""),
+                            "date":    a.get("date", ""),
+                            "summary": a.get("summary", ""),
+                        }
+                        for a in articles_raw[:15]
+                    ],
+                    "lookback_days": lookback_days,
+                }
+                yield {
+                    "status": "complete",
+                    "result": response_data
+                }
+    except Exception as e:
+        logger.error(f"❌ [analyze_ticker_stream] Error: {e}")
+        yield {
+            "status": "error",
+            "message": f"Gagal analisis berita: {str(e)}"
+        }
+
