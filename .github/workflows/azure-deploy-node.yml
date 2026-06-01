@@ -13,7 +13,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: 'invest-ai-node' # Sesuaikan dengan nama Web App Node.js Anda
-  NODE_VERSION: '20.x'                # Sesuaikan dengan versi Node.js yang Anda gunakan
+  NODE_VERSION: '22'                # Sesuaikan dengan versi Node.js yang Anda gunakan
 
 jobs:
   build-and-deploy:
