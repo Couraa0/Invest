@@ -17,7 +17,9 @@ import {
   Layers,
   Filter,
   ChevronDown,
+  Newspaper,
 } from 'lucide-react';
+import NewsAnalysisModal, { type StockForNews } from '../components/NewsAnalysisModal';
 import { cn } from '../lib/utils';
 import StockIcon from '../components/StockIcon';
 
@@ -145,6 +147,10 @@ export default function Signals() {
   const [activeCategory, setActiveCategory] = useState<string>('Semua');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // News Analysis Modal state
+  const [newsStock, setNewsStock] = useState<StockForNews | null>(null);
+  const [showNewsModal, setShowNewsModal] = useState(false);
+
   // Kategori dari API
   const [categories, setCategories] = useState<string[]>([]);
   const [categoryMeta, setCategoryMeta] = useState<Record<string, CategoryMeta[]>>({});
@@ -161,6 +167,12 @@ export default function Signals() {
 
   // Ref to track which categories have been fetched (avoids closure stale state)
   const loadedRef = useRef<Set<string>>(new Set());
+
+  // Handler buka News Modal
+  const openNewsModal = (stock: StockData) => {
+    setNewsStock({ ticker: stock.ticker, symbol: stock.symbol, name: stock.name });
+    setShowNewsModal(true);
+  };
 
   // ── Fetch daftar kategori saat mount ─────────────────────────────────────
 
@@ -584,9 +596,10 @@ export default function Signals() {
                       </div>
                     </div>
 
+                    {/* Tombol Analisis XGBoost */}
                     <button
                       onClick={() => handleStartAnalysis(stock)}
-                      className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm shadow-primary/20"
+                      className="w-full mt-4 py-2.5 bg-primary text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm shadow-primary/20"
                     >
                       <Sparkles className="w-3.5 h-3.5" /> Analisis dengan AI
                     </button>
@@ -675,21 +688,33 @@ export default function Signals() {
                       </div>
                     </div>
 
-                    {/* Signal badge */}
-                    <div className={cn(
-                      "px-6 py-3 rounded-2xl border text-center",
-                      selectedStock.signal === 'BULLISH'
-                        ? "bg-secondary/8 border-secondary/15"
-                        : "bg-error/8 border-error/15"
-                    )}>
-                      <p className="text-[10px] font-semibold text-on-surface-variant/50 mb-1">AI SIGNAL</p>
-                      <p className={cn(
-                        "text-lg font-bold",
-                        selectedStock.signal === 'BULLISH' ? "text-secondary" : "text-error"
+                    {/* Bagian Kanan: Signal & Berita */}
+                    <div className="flex flex-col items-center sm:items-end gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                      {/* Signal badge */}
+                      <div className={cn(
+                        "px-6 py-3 rounded-2xl border text-center w-full sm:w-auto",
+                        selectedStock.signal === 'BULLISH'
+                          ? "bg-secondary/8 border-secondary/15"
+                          : "bg-error/8 border-error/15"
                       )}>
-                        {selectedStock.action}
-                      </p>
-                      <p className="text-[10px] text-on-surface-variant/50 mt-1">{selectedStock.strength} · {selectedStock.confidence.toFixed(0)}%</p>
+                        <p className="text-[10px] font-semibold text-on-surface-variant/50 mb-1">AI SIGNAL</p>
+                        <p className={cn(
+                          "text-lg font-bold",
+                          selectedStock.signal === 'BULLISH' ? "text-secondary" : "text-error"
+                        )}>
+                          {selectedStock.action}
+                        </p>
+                        <p className="text-[10px] text-on-surface-variant/50 mt-1">{selectedStock.strength} · {selectedStock.confidence.toFixed(0)}%</p>
+                      </div>
+
+                      {/* Tombol Analisis Berita — LangGraph News Agent */}
+                      <button
+                        id="news-btn-analysis-view"
+                        onClick={() => openNewsModal(selectedStock)}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:border-primary/30 hover:text-primary hover:bg-primary/5 active:scale-[0.98] transition-all shadow-sm"
+                      >
+                        <Newspaper className="w-4 h-4" /> Analisis Berita AI
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -937,6 +962,18 @@ export default function Signals() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── News Analysis Modal ── */}
+      {showNewsModal && (
+        <NewsAnalysisModal
+          stock={newsStock}
+          apiBase={API_BASE}
+          onClose={() => {
+            setShowNewsModal(false);
+            setNewsStock(null);
+          }}
+        />
+      )}
     </div>
   );
 }

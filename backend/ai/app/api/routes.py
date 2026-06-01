@@ -4,10 +4,11 @@ InvestAI — FastAPI Routes (v2)
 Endpoint REST API untuk prediksi saham real-time — 90+ saham IDX
 """
 
+import asyncio
 import logging
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..services.prediction_service import (
     predict_stock,
@@ -346,3 +347,136 @@ async def chat_mentor(request: ChatRequest):
     from ..services.mentor_service import chat_with_mentor
     response = await chat_with_mentor(messages_dict)
     return response
+
+
+# ================================================================
+# News Analysis Endpoint (LangGraph Agent)
+# ================================================================
+
+class NewsAnalyzeRequest(BaseModel):
+    ticker: str = Field(..., example="BBCA.JK", description="Kode saham (e.g. BBCA atau BBCA.JK)")
+    days:   int = Field(30, ge=7, le=90, description="Periode analisis: 7, 30, atau 90 hari")
+
+
+class ArticleItem(BaseModel):
+    title:   str
+    link:    str
+    source:  str
+    date:    str
+    summary: str
+
+
+class NewsAnalyzeResponse(BaseModel):
+    status:          str
+    ticker:          str
+    sentiment:       str
+    sentiment_score: int
+    confidence:      str
+    article_count:   int
+    key_topics:      List[str]
+    risk_factors:    List[str]
+    catalysts:       List[str]
+    final_report:    str
+    articles:        List[ArticleItem]
+    lookback_days:   int
+
+
+_news_analyze_cache: dict = {}
+NEWS_CACHE_TTL = 1800  # 30 menit
+
+
+@router.post(
+    "/news/analyze",
+    response_model=NewsAnalyzeResponse,
+    summary="Analisis berita saham via LangGraph AI Agent",
+    tags=["news"],
+)
+async def analyze_stock_news(request: NewsAnalyzeRequest):
+    """
+    Jalankan LangGraph News Analysis Agent untuk satu saham.
+
+    Flow agent: **fetch_news → analyze_sentiment → generate_report**
+
+    - **ticker**: Kode saham IDX (e.g. `BBCA` atau `BBCA.JK`)
+    - **days**: Periode berita ke belakang — 7, 30, atau 90 hari
+
+    ⚠️ Endpoint ini membutuhkan 20-60 detik (LLM + news scraping).
+    Hasil di-cache selama 30 menit per ticker+periode.
+    """
+    import time as _time
+
+    # Normalisasi ticker
+    ticker = request.ticker.upper().strip()
+    if not ticker.endswith(".JK"):
+        ticker = f"{ticker}.JK"
+    days = request.days
+
+    # Cache check
+    cache_key = f"news_{ticker}_{days}"
+    if cache_key in _news_analyze_cache:
+        cached_data, cached_ts = _news_analyze_cache[cache_key]
+        if _time.time() - cached_ts < NEWS_CACHE_TTL:
+            logger.info(f"📦 Cache hit: {cache_key}")
+            return {**cached_data, "status": "success (cached)"}
+
+    logger.info(f"🚀 News analysis: {ticker} ({days} hari)")
+
+    try:
+        # Import lazily agar startup app tidak terganggu bila LangGraph belum terinstall
+        from ..services.news_agent import analyze_ticker
+
+        # Jalankan synchronous LangGraph agent di thread terpisah (non-blocking)
+        result = await asyncio.to_thread(analyze_ticker, ticker, days)
+
+    except ImportError as e:
+        logger.error(f"❌ Import error news_agent: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "LangGraph/Groq dependencies belum terinstall. "
+                "Jalankan: pip install langgraph langchain langchain-groq feedparser beautifulsoup4 python-dateutil"
+            ),
+        )
+    except EnvironmentError as e:
+        logger.error(f"❌ Env error: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"❌ News analysis error [{ticker}]: {e}")
+        raise HTTPException(status_code=500, detail=f"Gagal analisis berita: {str(e)}")
+
+    sentiment_data = result.get("sentiment_data") or {}
+    articles_raw   = result.get("raw_articles") or []
+
+    response_data = {
+        "status":          "success",
+        "ticker":          ticker.replace(".JK", ""),
+        "sentiment":       sentiment_data.get("overall_sentiment", "NETRAL"),
+        "sentiment_score": int(sentiment_data.get("sentiment_score", 0)),
+        "confidence":      sentiment_data.get("confidence", "RENDAH"),
+        "article_count":   result.get("article_count", 0),
+        "key_topics":      sentiment_data.get("key_topics", []),
+        "risk_factors":    sentiment_data.get("risk_factors", []),
+        "catalysts":       sentiment_data.get("catalysts", []),
+        "final_report":    result.get("final_report") or "Laporan tidak tersedia.",
+        "articles":        [
+            {
+                "title":   a.get("title", ""),
+                "link":    a.get("link", ""),
+                "source":  a.get("source", ""),
+                "date":    a.get("date", ""),
+                "summary": a.get("summary", ""),
+            }
+            for a in articles_raw[:15]
+        ],
+        "lookback_days": days,
+    }
+
+    # Simpan ke cache
+    _news_analyze_cache[cache_key] = (response_data, _time.time())
+
+    logger.info(
+        f"✅ News analysis done: {ticker} — "
+        f"{response_data['sentiment']} (score: {response_data['sentiment_score']}, "
+        f"{response_data['article_count']} artikel)"
+    )
+    return response_data

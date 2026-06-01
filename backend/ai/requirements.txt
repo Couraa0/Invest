@@ -9,3 +9,12 @@ yfinance
 joblib
 httpx
 xgboost
+# ── LangGraph News Agent ──────────────────────────────────────────
+langgraph
+langchain
+langchain-groq
+langchain-core
+feedparser
+beautifulsoup4
+python-dateutil
+requests

@@ -35,4 +35,4 @@ start /B npm run dev
 
 REM Menjalankan FastAPI di background terminal yang sama
 cd ai
-call venv\Scripts\activate && pip install -r requirements.txt --quiet && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+call venv\Scripts\activate && pip install -r requirements.txt --quiet && venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
