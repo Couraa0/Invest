@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowRight,
   TrendingUp,
@@ -15,7 +15,9 @@ import {
   BarChart3,
   Shield,
   Bot,
-  ChevronDown
+  ChevronDown,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
@@ -72,6 +74,8 @@ const FaqItem: React.FC<{ q: string; a: string }> = ({ q, a }) => {
 }
 
 export default function Landing() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <div className="bg-white min-h-screen overflow-x-hidden">
       {/* Ambient background */}
@@ -95,8 +99,8 @@ export default function Landing() {
             <Link to="/academy" className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Academy</Link>
             <Link to="/pricing" className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Harga</Link>
           </div>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden sm:block text-sm font-medium text-primary hover:text-primary/70 px-3 py-2 transition-colors">
+          <div className="hidden md:flex items-center gap-3">
+            <Link to="/login" className="text-sm font-medium text-primary hover:text-primary/70 px-3 py-2 transition-colors">
               Login
             </Link>
             <Link
@@ -106,8 +110,37 @@ export default function Landing() {
               Mulai Gratis
             </Link>
           </div>
+          {/* Mobile Menu Button */}
+          <button 
+            className="md:hidden p-2 text-slate-600 hover:text-primary transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Menu Dropdown */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-16 left-0 right-0 z-40 bg-white border-b border-slate-100 p-6 shadow-xl md:hidden"
+          >
+            <div className="flex flex-col gap-4">
+              <Link to="/features" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50">Fitur</Link>
+              <Link to="/academy" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50">Academy</Link>
+              <Link to="/pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50">Harga</Link>
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50">Login</Link>
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold text-center mt-2 shadow-lg shadow-primary/25">
+                Mulai Gratis
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── HERO ── */}
       <section className="pt-32 pb-20 px-6">

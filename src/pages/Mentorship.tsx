@@ -1,10 +1,10 @@
 import { motion } from 'motion/react';
-import { 
-  Bot, 
-  Send, 
-  Sparkles, 
-  Plus, 
-  Zap, 
+import {
+  Bot,
+  Send,
+  Sparkles,
+  Plus,
+  Zap,
   Brain,
   TrendingUp,
   LineChart,
@@ -13,7 +13,10 @@ import {
   MoreVertical,
   Trash2,
   Clock,
-  MessageSquare
+  MessageSquare,
+  History,
+  X,
+  Search
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
@@ -30,6 +33,12 @@ const sessions = [
   { title: 'Strategi Dividen Investing', date: 'Kemarin' },
   { title: 'Apa itu Right Issue?', date: '3 hari lalu' },
   { title: 'Review Portofolio Q1', date: '1 minggu lalu' },
+  { title: 'Kinerja Sektor Bank 2026', date: '2 minggu lalu' },
+  { title: 'Cara Baca Laporan Keuangan', date: '3 minggu lalu' },
+  { title: 'Prospek Saham Teknologi', date: '1 bulan lalu' },
+  { title: 'Setup Trading Swing', date: '1 bulan lalu' },
+  { title: 'Psikologi Trading', date: '2 bulan lalu' },
+  { title: 'Manajemen Risiko', date: '2 bulan lalu' },
 ];
 
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? 'http://localhost:8000' : '');
@@ -73,7 +82,13 @@ export default function Mentorship() {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [searchSession, setSearchSession] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const filteredSessions = sessions.filter(session => 
+    session.title.toLowerCase().includes(searchSession.toLowerCase())
+  );
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -84,7 +99,7 @@ export default function Mentorship() {
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
     const userMsg = input.trim();
-    
+
     const updatedMessages = [...messages, { role: 'user', content: userMsg }];
     setMessages(updatedMessages);
     setInput('');
@@ -125,9 +140,24 @@ export default function Mentorship() {
   };
 
   return (
-    <div className="h-[calc(100vh-130px)] flex flex-col lg:flex-row gap-4">
+    <div className="fixed inset-x-0 top-16 bottom-16 bg-white flex flex-col lg:relative lg:inset-auto lg:bg-transparent lg:h-[calc(100dvh-144px)] lg:flex-row gap-4">
+      {/* Mobile Sidebar Backdrop */}
+      {showMobileSidebar && (
+        <div className="fixed inset-x-0 top-16 bottom-16 bg-black/40 z-[60] lg:hidden backdrop-blur-sm transition-opacity" onClick={() => setShowMobileSidebar(false)} />
+      )}
+
       {/* Sessions Sidebar */}
-      <aside className="hidden lg:flex flex-col w-72 shrink-0 gap-3">
+      <aside className={cn(
+        "fixed top-16 bottom-16 left-0 z-[60] bg-slate-50 w-72 p-4 flex flex-col gap-3 transition-transform duration-300 shadow-2xl lg:relative lg:inset-auto lg:translate-x-0 lg:p-0 lg:shadow-none lg:z-auto lg:bg-transparent lg:flex shrink-0 lg:h-[calc(100dvh-144px)]",
+        showMobileSidebar ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="flex lg:hidden items-center justify-between mb-1 mt-2">
+          <h2 className="font-bold text-primary">Riwayat Diskusi</h2>
+          <button onClick={() => setShowMobileSidebar(false)} className="p-2 -mr-2 text-on-surface-variant/50 hover:bg-slate-200 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
         <button className="flex items-center justify-center gap-2.5 w-full py-3 bg-primary text-white rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all group">
           <div className="w-6 h-6 bg-white/15 rounded-lg flex items-center justify-center group-hover:rotate-90 transition-transform">
             <Plus className="w-3.5 h-3.5" />
@@ -135,8 +165,8 @@ export default function Mentorship() {
           New Discussion
         </button>
 
-        <div className="flex-1 card rounded-2xl p-4 flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
+        <div className="flex-1 card rounded-2xl p-4 flex flex-col overflow-hidden min-h-0">
+          <div className="flex items-center justify-between mb-3 shrink-0">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-3.5 h-3.5 text-on-surface-variant/40" />
               <h3 className="stat-label">Recent Sessions</h3>
@@ -144,57 +174,70 @@ export default function Mentorship() {
             <Clock className="w-3.5 h-3.5 text-on-surface-variant/30" />
           </div>
 
-          <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
-            {sessions.map((session, i) => (
-              <div
-                key={i}
-                className="group cursor-pointer p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all"
-              >
-                <h4 className="text-xs font-semibold text-primary truncate mb-0.5">{session.title}</h4>
-                <div className="flex items-center justify-between">
-                  <p className="stat-label">{session.date}</p>
-                  <MoreVertical className="w-3 h-3 text-on-surface-variant/0 group-hover:text-on-surface-variant/30 transition-colors" />
-                </div>
-              </div>
-            ))}
+          <div className="relative mb-3 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-on-surface-variant/40" />
+            <input
+              type="text"
+              placeholder="Cari riwayat obrolan..."
+              value={searchSession}
+              onChange={(e) => setSearchSession(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs text-primary placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:bg-white transition-all"
+            />
           </div>
 
-          <div className="mt-3 pt-3 border-t border-slate-100">
-            <div className="bg-secondary/6 p-4 rounded-xl border border-secondary/10 hover:bg-secondary/10 transition-colors cursor-help">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Zap className="w-3.5 h-3.5 text-secondary" />
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Premium Plus</span>
+          <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
+            {filteredSessions.length > 0 ? (
+              filteredSessions.map((session, i) => (
+                <div
+                  key={i}
+                  className="group cursor-pointer p-3 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all"
+                >
+                  <h4 className="text-xs font-semibold text-primary truncate mb-0.5">{session.title}</h4>
+                  <div className="flex items-center justify-between">
+                    <p className="stat-label">{session.date}</p>
+                    <MoreVertical className="w-3 h-3 text-on-surface-variant/0 group-hover:text-on-surface-variant/30 transition-colors" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-xs text-on-surface-variant/50">Tidak ada riwayat ditemukan.</p>
               </div>
-              <p className="text-xs text-primary/70 leading-snug">Akses analisis fundamental mendalam secara instan.</p>
-            </div>
+            )}
           </div>
         </div>
       </aside>
 
       {/* Main Chat */}
-      <main className="flex-1 card rounded-2xl flex flex-col overflow-hidden">
+      <main className="flex-1 bg-white lg:card rounded-none lg:rounded-2xl flex flex-col overflow-hidden border-t border-slate-100 lg:border-none">
         {/* Chat Header */}
-        <header className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-md shadow-primary/20">
-                <Bot className="w-5 h-5" />
+        <header className="px-3 sm:px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              className="lg:hidden p-2 -ml-1 text-on-surface-variant/40 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors shrink-0"
+              onClick={() => setShowMobileSidebar(true)}
+            >
+              <History className="w-5 h-5" />
+            </button>
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-md shadow-primary/20">
+                <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary border-2 border-white rounded-full" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-primary">InvestAI Mentor</h2>
-                <span className="px-1.5 py-0.5 rounded-md bg-secondary/10 text-[8px] font-bold text-secondary uppercase tracking-wider">AI Expert</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm font-bold text-primary truncate">InvestAI Mentor</h2>
+                <span className="px-1.5 py-0.5 rounded-md bg-secondary/10 text-[8px] font-bold text-secondary uppercase tracking-wider shrink-0">AI Expert</span>
               </div>
-              <p className="stat-label mt-0.5">Always ready to guide your trades</p>
+              <p className="stat-label mt-0.5 truncate max-w-[200px]">Always ready to guide your trades</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button className="p-2 text-on-surface-variant/40 hover:text-primary hover:bg-slate-100 rounded-lg transition-all">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+            <button className="p-1.5 sm:p-2 text-on-surface-variant/40 hover:text-primary hover:bg-slate-100 rounded-lg transition-all">
               <Sparkles className="w-4 h-4" />
             </button>
-            <button className="p-2 text-on-surface-variant/40 hover:text-error hover:bg-red-50 rounded-lg transition-all">
+            <button className="p-1.5 sm:p-2 text-on-surface-variant/40 hover:text-error hover:bg-red-50 rounded-lg transition-all">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -249,14 +292,14 @@ export default function Mentorship() {
         {/* Input Area */}
         <footer className="px-5 pb-5 pt-4 bg-white border-t border-slate-100">
           {/* Quick Topics */}
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex overflow-x-auto no-scrollbar gap-2 mb-3 pb-1 sm:pb-0 -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap">
             {suggestedTopics.map((topic, i) => (
               <button
                 key={i}
                 onClick={() => setInput(topic.label)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-primary/20 hover:bg-primary/4 transition-all text-xs font-medium text-primary/70 hover:text-primary group"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-primary/20 hover:bg-primary/4 transition-all text-[10px] sm:text-xs font-medium text-primary/70 hover:text-primary group shrink-0 whitespace-nowrap"
               >
-                <topic.icon className={cn("w-3 h-3 group-hover:scale-110 transition-transform", topic.color)} />
+                <topic.icon className={cn("w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:scale-110 transition-transform", topic.color)} />
                 {topic.label}
               </button>
             ))}
@@ -288,7 +331,7 @@ export default function Mentorship() {
               </button>
             </div>
           </div>
-          <p className="text-center mt-2.5 stat-label">InvestAI Expert Advisor · Akurat per hari ini</p>
+          <p className="text-center mt-2.5 stat-label text-[8px] sm:text-[10px] truncate w-full px-2">InvestAI Expert Advisor · Akurat per hari ini</p>
         </footer>
       </main>
     </div>

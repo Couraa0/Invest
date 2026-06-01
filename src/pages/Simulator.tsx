@@ -218,7 +218,7 @@ function StockChartPanel({
     : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -228,29 +228,29 @@ function StockChartPanel({
         onClick={e => e.stopPropagation()}
       >
         {/* Panel Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-3">
-            <StockIcon symbol={stock.symbol} className="w-10 h-10" />
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-bold text-primary">{stock.symbol}</p>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 shrink-0 gap-2 sm:gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <StockIcon symbol={stock.symbol} className="w-10 h-10 shrink-0" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <p className="font-bold text-primary truncate">{stock.symbol}</p>
                 <span className={cn(
-                  'px-2 py-0.5 rounded-lg text-[10px] font-bold border',
+                  'px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold border whitespace-nowrap',
                   isBullish ? 'bg-secondary/10 text-secondary border-secondary/15' : 'bg-error/10 text-error border-error/15'
                 )}>{stock.action}</span>
               </div>
-              <p className="text-xs text-on-surface-variant/50 truncate max-w-[200px]">{stock.name}</p>
+              <p className="text-[10px] sm:text-xs text-on-surface-variant/50 truncate max-w-[120px] sm:max-w-[200px]">{stock.name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="text-right">
-              <p className="text-lg font-bold text-primary">Rp {formatPrice(stock.harga)}</p>
-              <p className={cn('text-xs font-semibold flex items-center justify-end gap-1', stock.change_pct >= 0 ? 'text-secondary' : 'text-error')}>
-                {stock.change_pct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              <p className="text-sm sm:text-lg font-bold text-primary whitespace-nowrap">Rp {formatPrice(stock.harga)}</p>
+              <p className={cn('text-[9px] sm:text-xs font-semibold flex items-center justify-end gap-1', stock.change_pct >= 0 ? 'text-secondary' : 'text-error')}>
+                {stock.change_pct >= 0 ? <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <TrendingDown className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                 {stock.change_pct >= 0 ? '+' : ''}{stock.change_pct.toFixed(2)}%
               </p>
             </div>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-on-surface-variant transition-colors">
+            <button onClick={onClose} className="p-1.5 sm:p-2 rounded-xl hover:bg-slate-100 text-on-surface-variant transition-colors shrink-0">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -285,13 +285,13 @@ function StockChartPanel({
               <motion.div key="chart" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-6 space-y-5">
                 {/* Period selector */}
                 <div className="flex items-center justify-between">
-                  <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                  <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar shrink-0 max-w-[80vw]">
                     {['1D', '1W', '1M', '1Y', '5Y'].map(t => (
                       <button
                         key={t}
                         onClick={() => setActiveRange(t)}
                         className={cn(
-                          'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all',
+                          'px-3 py-1.5 text-[10px] sm:text-xs font-semibold rounded-lg transition-all whitespace-nowrap',
                           t === activeRange ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant/50 hover:text-primary'
                         )}
                       >
@@ -299,7 +299,7 @@ function StockChartPanel({
                       </button>
                     ))}
                   </div>
-                  {chartLoading && <RefreshCw className="w-4 h-4 text-primary animate-spin" />}
+                  {chartLoading && <RefreshCw className="w-4 h-4 text-primary animate-spin shrink-0 ml-2" />}
                 </div>
 
                 {/* Chart */}
@@ -351,32 +351,32 @@ function StockChartPanel({
                 </div>
 
                 {/* Key levels */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="flex items-center justify-between gap-2 sm:gap-3">
                   {[
                     { label: 'Harga Sekarang', val: `Rp ${formatPrice(stock.harga)}`, color: 'text-primary' },
                     { label: 'Take Profit (+3%)', val: stock.take_profit ? `Rp ${formatPrice(stock.take_profit)}` : '—', color: 'text-secondary' },
                     { label: 'Stop Loss (-2%)', val: stock.stop_loss ? `Rp ${formatPrice(stock.stop_loss)}` : '—', color: 'text-error' },
                   ].map((item, i) => (
-                    <div key={i} className="text-center p-3 bg-slate-50 rounded-xl">
-                      <p className="text-[10px] text-on-surface-variant/50 mb-1">{item.label}</p>
-                      <p className={cn('text-sm font-bold', item.color)}>{item.val}</p>
+                    <div key={i} className="flex-1 text-center p-2 sm:p-3 bg-slate-50 rounded-xl min-w-0">
+                      <p className="text-[9px] sm:text-[10px] text-on-surface-variant/50 mb-1 truncate">{item.label}</p>
+                      <p className={cn('text-xs sm:text-sm font-bold truncate', item.color)}>{item.val}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Technical Indicators */}
                 {stock.rsi && (
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between gap-2 sm:gap-3">
                     {[
                       { label: 'RSI (14)', val: stock.rsi?.toFixed(1), status: stock.rsi_status, good: stock.rsi_status === 'Normal' },
                       { label: 'MACD', val: stock.macd_status, status: stock.macd_status, good: stock.macd_status === 'Bullish' },
                       { label: 'Confidence', val: `${stock.confidence.toFixed(0)}%`, status: stock.strength, good: stock.confidence >= 60 },
                     ].map((item, i) => (
-                      <div key={i} className="p-3 bg-slate-50 rounded-xl">
-                        <p className="text-[10px] text-on-surface-variant/50 mb-1">{item.label}</p>
-                        <p className="text-sm font-bold text-primary">{item.val}</p>
+                      <div key={i} className="flex-1 p-2 sm:p-3 bg-slate-50 rounded-xl min-w-0">
+                        <p className="text-[9px] sm:text-[10px] text-on-surface-variant/50 mb-1 truncate">{item.label}</p>
+                        <p className="text-xs sm:text-sm font-bold text-primary truncate">{item.val}</p>
                         <span className={cn(
-                          'text-[9px] font-bold uppercase tracking-wider',
+                          'text-[8px] sm:text-[9px] font-bold uppercase tracking-wider truncate block',
                           item.good ? 'text-secondary' : 'text-error'
                         )}>{item.status}</span>
                       </div>
@@ -813,7 +813,7 @@ function StockPicker({ onSelect, onClose }: {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -926,13 +926,13 @@ function IHSGChart() {
   return (
     <motion.section custom={4} variants={fadeUp} initial="hidden" animate="visible" className="lg:col-span-8 card p-6 rounded-2xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-0.5">
             <h3 className="text-base font-bold text-primary">IHSG — Indeks Harga Saham Gabungan</h3>
             {ihsg && (
               <span className={cn(
-                'px-2 py-0.5 rounded-lg text-[10px] font-bold border',
+                'px-2 py-0.5 rounded-lg text-[10px] font-bold border whitespace-nowrap',
                 isUp ? 'bg-secondary/10 text-secondary border-secondary/15' : 'bg-error/10 text-error border-error/15'
               )}>{ihsg.status}</span>
             )}
@@ -949,10 +949,10 @@ function IHSGChart() {
             <div className="h-8 w-32 bg-slate-100 animate-pulse rounded-lg" />
           )}
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 shrink-0 overflow-x-auto no-scrollbar">
           {['1D','1W','1M','3M','1Y','5Y'].map(t => (
             <button key={t} onClick={() => setPeriod(t)}
-              className={cn('px-3 py-1.5 text-xs font-semibold rounded-lg transition-all',
+              className={cn('px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap',
                 t === period ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant/50 hover:text-primary'
               )}>{t}</button>
           ))}
@@ -996,14 +996,14 @@ function IHSGChart() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100 mt-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-4 border-t border-slate-100 mt-4">
         {[
           { label: 'IHSG Kini', value: ihsg ? ihsg.value.toLocaleString('id-ID', { maximumFractionDigits: 0 }) : '—', color: 'text-primary' },
           { label: 'Sentimen Bullish', value: ihsg ? `${ihsg.bullish.toFixed(0)}%` : '—', color: isUp ? 'text-secondary' : 'text-error' },
           { label: 'Perubahan Hari Ini', value: ihsg ? `${ihsg.change >= 0 ? '+' : ''}${ihsg.change.toFixed(2)}%` : '—', color: isUp ? 'text-secondary' : 'text-error' },
         ].map((m, i) => (
           <div key={i}>
-            <p className="text-[10px] text-on-surface-variant/50 mb-0.5">{m.label}</p>
+            <p className="text-[10px] text-on-surface-variant/50 mb-0.5 line-clamp-1">{m.label}</p>
             <p className={cn('text-lg font-bold', m.color)}>{m.value}</p>
           </div>
         ))}
@@ -1149,15 +1149,15 @@ export default function Simulator() {
 
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/8 border border-secondary/12 text-secondary text-[10px] font-semibold uppercase tracking-wider mb-2">
               <Zap className="w-3 h-3 fill-current" /> Paper Trading Live
             </div>
-            <h1 className="text-2xl font-bold text-primary tracking-tight">Simulasi Trading</h1>
-            <p className="text-sm text-on-surface-variant/60 mt-0.5">Beli & jual saham IDX · Chart & simulasi harga · Data real-time</p>
+            <h1 className="text-2xl font-bold text-primary tracking-tight truncate w-full">Simulasi Trading</h1>
+            <p className="text-sm text-on-surface-variant/60 mt-0.5 leading-snug">Beli & jual saham IDX · Chart & simulasi harga · Data real-time</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setShowResetConfirm(true)} className="p-2.5 bg-white border border-slate-200 rounded-xl text-on-surface-variant hover:text-error hover:border-error/20 transition-all shadow-sm" title="Reset">
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -1299,7 +1299,7 @@ export default function Simulator() {
                                   <StockIcon symbol={pos.symbol} className="w-8 h-8 shrink-0" />
                                   <div className="text-left">
                                     <p className="text-sm font-bold text-primary group-hover:text-secondary transition-colors">{pos.symbol}</p>
-                                    <p className="text-[10px] text-on-surface-variant/40 truncate max-w-[90px]">{pos.name}</p>
+                                    <p className="text-[10px] text-on-surface-variant/40 whitespace-nowrap truncate max-w-[140px]">{pos.name}</p>
                                   </div>
                                 </button>
                               </td>
@@ -1364,7 +1364,7 @@ export default function Simulator() {
                                   <StockIcon symbol={tx.symbol} className="w-8 h-8 shrink-0" />
                                   <div>
                                     <p className="text-sm font-bold text-primary">{tx.symbol}</p>
-                                    <p className="text-[10px] text-on-surface-variant/40 truncate max-w-[90px]">{tx.name}</p>
+                                    <p className="text-[10px] text-on-surface-variant/40 whitespace-nowrap truncate max-w-[140px]">{tx.name}</p>
                                   </div>
                                 </div>
                               </td>

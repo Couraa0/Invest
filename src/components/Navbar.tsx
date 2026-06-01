@@ -40,14 +40,8 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <header className="fixed top-0 right-0 left-0 lg:left-72 h-16 flex items-center justify-between px-5 md:px-8 bg-white/80 backdrop-blur-xl border-b border-slate-100/80 z-30">
-      {/* Left: Menu button + Page title */}
+      {/* Left: Page title */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={onMenuClick}
-          className="lg:hidden p-2 text-on-surface-variant hover:bg-slate-100 rounded-lg transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center text-primary hidden sm:flex">
             <Icon className="w-4 h-4" />

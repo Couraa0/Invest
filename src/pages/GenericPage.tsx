@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Menu, X } from 'lucide-react';
 import Footer from '../components/Footer';
 
 const pageContents: Record<string, React.ReactNode> = {
@@ -64,6 +65,7 @@ const pageContents: Record<string, React.ReactNode> = {
 };
 
 export default function GenericPage({ title }: { title: string }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const content = pageContents[title] || (
     <p>Konten untuk halaman ini sedang dalam tahap penyusunan. Silakan kembali lagi nanti.</p>
   );
@@ -84,7 +86,7 @@ export default function GenericPage({ title }: { title: string }) {
             <Link to="/academy" className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Academy</Link>
             <Link to="/pricing" className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Harga</Link>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3">
             <Link to="/" className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors px-3 py-2 flex items-center gap-1">
               <ArrowLeft className="w-4 h-4" /> Kembali
             </Link>
@@ -95,8 +97,39 @@ export default function GenericPage({ title }: { title: string }) {
               Mulai Gratis
             </Link>
           </div>
+          {/* Mobile Menu Button */}
+          <button 
+            className="md:hidden p-2 text-slate-600 hover:text-primary transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Menu Dropdown */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-16 left-0 right-0 z-40 bg-white border-b border-slate-100 p-6 shadow-xl md:hidden"
+          >
+            <div className="flex flex-col gap-4">
+              <Link to="/features" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50">Fitur</Link>
+              <Link to="/academy" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50">Academy</Link>
+              <Link to="/pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50">Harga</Link>
+              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-slate-600 hover:text-primary py-2 border-b border-slate-50 flex items-center gap-1">
+                <ArrowLeft className="w-4 h-4" /> Kembali
+              </Link>
+              <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold text-center mt-2 shadow-lg shadow-primary/25">
+                Mulai Gratis
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Content */}
       <div className="flex-1 pt-32 pb-24 px-6 max-w-3xl mx-auto w-full">

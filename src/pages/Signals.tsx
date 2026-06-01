@@ -355,7 +355,7 @@ export default function Signals() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5 pb-28 overflow-x-hidden w-full">
+    <div className="space-y-5 overflow-x-hidden w-full">
       <AnimatePresence mode="wait">
         {view === 'list' ? (
           <motion.div key="list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-5">
@@ -533,7 +533,7 @@ export default function Signals() {
                       <StockIcon symbol={stock.symbol} />
                       <div className="min-w-0">
                         <h3 className="text-sm font-bold text-primary">{stock.symbol}</h3>
-                        <p className="text-[10px] text-on-surface-variant/50 font-medium truncate max-w-[130px]">{stock.name}</p>
+                        <p className="text-[10px] text-on-surface-variant/50 font-medium truncate w-full">{stock.name}</p>
                       </div>
                     </div>
 
@@ -834,22 +834,24 @@ export default function Signals() {
                   </div>
                 </div>
 
-                {/* Floating Action Bar */}
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-5 z-30">
-                  <div className="bg-primary/95 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-2xl flex items-center justify-between text-white border border-white/8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center">
-                        <BotIcon className="w-5 h-5 text-secondary" />
-                      </div>
-                      <p className="text-sm font-medium">Butuh bantuan memutuskan?</p>
+                {/* AI Assistant Banner */}
+                <div className="card p-5 rounded-2xl bg-primary text-white flex flex-col sm:flex-row items-center justify-between gap-4 mt-5 relative overflow-hidden">
+                  <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-white/5 skew-x-[20deg] translate-x-8 pointer-events-none" />
+                  <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0 border border-white/10">
+                      <BotIcon className="w-6 h-6 text-white" />
                     </div>
-                    <button
-                      onClick={() => setShowRecommendation(true)}
-                      className="bg-secondary text-white px-5 py-2 rounded-xl font-semibold text-xs flex items-center gap-1.5 hover:bg-secondary/90 active:scale-[0.98] transition-all shadow-lg shadow-secondary/20"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" /> Minta Rekomendasi
-                    </button>
+                    <div>
+                      <h3 className="text-base font-bold mb-0.5">Butuh Bantuan Memutuskan?</h3>
+                      <p className="text-xs text-white/60">Tanya AI Mentor untuk rekomendasi yang lebih mendetail.</p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => setShowRecommendation(true)}
+                    className="w-full sm:w-auto bg-secondary text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-secondary/90 active:scale-[0.98] transition-all shadow-lg shadow-secondary/20 shrink-0 relative z-10"
+                  >
+                    <Sparkles className="w-4 h-4" /> Tanya AI Mentor
+                  </button>
                 </div>
 
                 {/* Recommendation Modal */}

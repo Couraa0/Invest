@@ -117,8 +117,8 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
             <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/8 rounded-full" />
             <div className="absolute top-3 -right-2 w-8 h-8 bg-white/5 rounded-full" />
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-secondary" />
-              <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Premium</span>
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider">Premium</span>
             </div>
             <p className="text-sm font-semibold leading-snug mb-4 text-white/90">Akses sinyal AI eksklusif & analisis mendalam.</p>
             <button

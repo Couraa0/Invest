@@ -104,6 +104,7 @@ export default function Dashboard() {
   const [loadingStocks, setLoadingStocks] = useState(true);
   const [loadingMarket, setLoadingMarket] = useState(true);
   const [lastUpdated, setLastUpdated]     = useState<Date | null>(null);
+  const [marketStatus, setMarketStatus]   = useState({ isOpen: false, text: 'Checking...' });
 
   // ── Fetch Functions ──────────────────────────────────────────────────────
 
@@ -158,6 +159,58 @@ export default function Dashboard() {
     fetchMarket();
   }, []);
 
+  // ── Real-time Market Status ───────────────────────────────────────────────
+  useEffect(() => {
+    const checkMarketStatus = () => {
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jakarta',
+        weekday: 'short',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(now);
+      let weekday = '';
+      let hour = 0;
+      let minute = 0;
+      
+      parts.forEach(part => {
+        if (part.type === 'weekday') weekday = part.value;
+        if (part.type === 'hour') hour = parseInt(part.value, 10);
+        if (part.type === 'minute') minute = parseInt(part.value, 10);
+      });
+
+      const isWeekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(weekday);
+      // Waktu dalam menit sejak 00:00
+      const timeInMinutes = hour * 60 + minute;
+      
+      // Jam buka bursa: 09:00 (540) - 16:00 (960)
+      let isBreak = false;
+      if (isWeekday) {
+        if (weekday === 'Fri') {
+          // Break Jumat: 11:30 (690) - 14:00 (840)
+          if (timeInMinutes >= 690 && timeInMinutes < 840) isBreak = true;
+        } else {
+          // Break Senin-Kamis: 12:00 (720) - 13:30 (810)
+          if (timeInMinutes >= 720 && timeInMinutes < 810) isBreak = true;
+        }
+      }
+
+      if (!isWeekday || timeInMinutes < 540 || timeInMinutes >= 960) {
+        setMarketStatus({ isOpen: false, text: 'IDX Closed' });
+      } else if (isBreak) {
+        setMarketStatus({ isOpen: false, text: 'IDX Break' });
+      } else {
+        setMarketStatus({ isOpen: true, text: 'IDX Open' });
+      }
+    };
+
+    checkMarketStatus();
+    const interval = setInterval(checkMarketStatus, 60000); // Update tiap menit
+    return () => clearInterval(interval);
+  }, []);
+
   const marketChartData = market?.chart ?? [];
   const isMarketUp = (market?.change_pct ?? 0) >= 0;
 
@@ -171,9 +224,9 @@ export default function Dashboard() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-primary tracking-tight">Selamat Datang {currentProfile.emoji}</h1>
-            <span className="px-2.5 py-0.5 bg-primary/8 text-primary text-[10px] font-semibold uppercase tracking-wider rounded-full border border-primary/12">
+            <span className="px-2.5 py-0.5 bg-primary/8 text-primary text-[10px] font-semibold uppercase tracking-wider rounded-full border border-primary/12 whitespace-nowrap">
               {currentProfile.badge}
             </span>
           </div>
@@ -195,9 +248,22 @@ export default function Dashboard() {
           >
             <RefreshCw className={cn("w-4 h-4", loadingStocks && "animate-spin")} />
           </button>
-          <div className="flex items-center gap-2 px-4 py-2 bg-secondary/8 rounded-xl border border-secondary/12">
-            <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-            <span className="text-[11px] font-semibold text-secondary uppercase tracking-wider">IDX Open</span>
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors",
+            marketStatus.isOpen 
+              ? "bg-secondary/8 border-secondary/12" 
+              : "bg-error/5 border-error/10"
+          )}>
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              marketStatus.isOpen ? "bg-secondary animate-pulse" : "bg-error"
+            )} />
+            <span className={cn(
+              "text-[11px] font-semibold uppercase tracking-wider",
+              marketStatus.isOpen ? "text-secondary" : "text-error"
+            )}>
+              {marketStatus.text}
+            </span>
           </div>
         </div>
       </motion.div>
@@ -207,7 +273,7 @@ export default function Dashboard() {
         {/* AI Insight - Large Card */}
         <motion.section
           custom={0} variants={fadeUp} initial="hidden" animate="visible"
-          className="lg:col-span-8 card p-6 rounded-2xl"
+          className="lg:col-span-8 card p-6 rounded-2xl flex flex-col h-full"
         >
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
@@ -246,27 +312,44 @@ export default function Dashboard() {
             </div>
 
             <div className="md:w-1/3 bg-secondary/5 border border-secondary/10 rounded-xl p-5 flex flex-col items-center justify-center text-center">
-              <p className="stat-label mb-3">Sentimen Pasar</p>
-              <div className="flex items-end justify-center gap-1 h-14 mb-3">
-                {[30, 50, 65, 80, 60].map((h, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ height: 0 }}
-                    animate={{ height: `${h}%` }}
-                    transition={{ delay: i * 0.1 + 0.3, duration: 0.5, ease: 'easeOut' }}
-                    className={cn("w-3 rounded-t-sm", i === 3 ? "bg-secondary" : "bg-secondary/30")}
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
+              <p className="stat-label mb-2">Sentimen Pasar</p>
+              
+              <div className="w-full flex items-center justify-center my-2">
+                <div className="relative w-28 h-28 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    {/* Background Bearish Circle */}
+                    <path
+                      className="text-error/20"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    {/* Progress Bullish Circle */}
+                    <motion.path
+                      className="text-secondary"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      initial={{ strokeDasharray: "0, 100" }}
+                      animate={{ strokeDasharray: `${market?.bullish_percent ?? 50}, 100` }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                    />
+                  </svg>
+                  <div className="absolute flex flex-col items-center justify-center mt-0.5">
+                    <p className={cn("text-lg font-bold leading-tight", market?.status === 'Bullish' ? "text-secondary" : "text-error")}>
+                      {market?.status ?? 'Memuat...'}
+                    </p>
+                    {market && market.bullish_percent !== undefined && (
+                      <p className="text-[10px] font-semibold text-on-surface-variant/50 mt-0.5 uppercase tracking-wider">
+                        {Math.round(market.bullish_percent)}% Bullish
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className={cn("text-xl font-bold", market?.status === 'Bullish' ? "text-secondary" : "text-error")}>
-                {market?.status ?? 'Memuat...'}
-              </p>
-              {market && market.bullish_percent !== undefined && (
-                <p className="stat-label mt-1">
-                  Bullish: {Math.round(market.bullish_percent)}%
-                </p>
-              )}
             </div>
           </div>
         </motion.section>
@@ -274,7 +357,7 @@ export default function Dashboard() {
         {/* Market Overview */}
         <motion.section
           custom={1} variants={fadeUp} initial="hidden" animate="visible"
-          className="lg:col-span-4 card p-6 rounded-2xl overflow-hidden"
+          className="lg:col-span-4 card p-6 rounded-2xl overflow-hidden flex flex-col h-full"
         >
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
@@ -291,9 +374,9 @@ export default function Dashboard() {
 
           {market ? (
             <>
-              <div className="mb-5">
+              <div className="mb-5 flex-1">
                 <div className="flex justify-between items-baseline mb-2">
-                  <span className="text-xl font-bold text-primary">IHSG</span>
+                  <span className={cn("text-xl font-bold", isMarketUp ? "text-primary" : "text-error")}>IHSG</span>
                   <span className={cn("font-bold text-sm", isMarketUp ? "text-secondary" : "text-error")}>
                     {market.change_pct >= 0 ? '+' : ''}{market.change_pct.toFixed(2)}%
                   </span>
@@ -306,47 +389,47 @@ export default function Dashboard() {
                     className={cn("h-full rounded-full", isMarketUp ? "bg-secondary" : "bg-error")}
                   />
                 </div>
-                <p className="stat-label mt-2">
+                <p className={cn("mt-2 text-xs font-semibold uppercase tracking-wider", isMarketUp ? "text-secondary/70" : "text-error/80")}>
                   {market.ihsg.toLocaleString('id-ID')} 
-                  {market.volume > 0 && ` · Vol ${(market.volume / 1e12).toFixed(1)}T`}
+                  {market.volume > 0 && ` · VOL ${(market.volume / 1e12).toFixed(1)}T`}
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 mb-4">
-                <p className="stat-label mb-3">Top Sector</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/8 flex items-center justify-center text-primary">
-                      <Landmark className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-primary">Finance</p>
-                      <p className="stat-label">Sektor Utama</p>
-                    </div>
-                  </div>
-                  <span className={cn("font-bold text-sm", isMarketUp ? "text-secondary" : "text-error")}>
-                    {market.change_pct >= 0 ? '+' : ''}{(market.change_pct * 1.3).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Mini Chart */}
-              <div className="h-16 -mx-2 opacity-70">
+              {/* Interactive Market Chart */}
+              <div className="h-48 mt-1 -mx-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={marketChartData}>
+                  <AreaChart data={marketChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="dashColorVal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={isMarketUp ? "#006c49" : "#ef4444"} stopOpacity={0.2} />
+                        <stop offset="5%"  stopColor={isMarketUp ? "#006c49" : "#ef4444"} stopOpacity={0.3} />
                         <stop offset="95%" stopColor={isMarketUp ? "#006c49" : "#ef4444"} stopOpacity={0} />
                       </linearGradient>
                     </defs>
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#94a3b8' }} 
+                      dy={10}
+                    />
+                    <YAxis 
+                      domain={['dataMin - 20', 'dataMax + 20']} 
+                      hide 
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                      labelStyle={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}
+                      itemStyle={{ color: isMarketUp ? "#006c49" : "#ef4444", fontWeight: 'bold' }}
+                      formatter={(value: number) => [value.toLocaleString('id-ID'), 'IHSG']}
+                    />
                     <Area
                       type="monotone"
                       dataKey="value"
                       stroke={isMarketUp ? "#006c49" : "#ef4444"}
                       fillOpacity={1}
                       fill="url(#dashColorVal)"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
+                      activeDot={{ r: 6, strokeWidth: 0, fill: isMarketUp ? "#006c49" : "#ef4444" }}
                       dot={false}
                     />
                   </AreaChart>
@@ -481,13 +564,13 @@ export default function Dashboard() {
             { icon: ArrowUpRight,label: 'Belajar Sekarang',desc: 'Kurikulum terstruktur', to: '/academy', color: 'bg-secondary/8 text-secondary' },
           ].map((action, i) => (
             <Link key={i} to={action.to}>
-              <div className="card p-4 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 group">
-                <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", action.color)}>
-                  <action.icon className="w-4 h-4" />
+              <div className="card p-3 sm:p-4 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left group">
+                <div className={cn("w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0", action.color)}>
+                  <action.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-primary truncate">{action.label}</p>
-                  <p className="stat-label truncate">{action.desc}</p>
+                <div className="min-w-0 w-full">
+                  <p className="text-xs sm:text-sm font-semibold text-primary truncate">{action.label}</p>
+                  <p className="text-[9px] sm:text-[10px] text-on-surface-variant/50 font-medium uppercase tracking-wider truncate mt-0.5">{action.desc}</p>
                 </div>
               </div>
             </Link>
