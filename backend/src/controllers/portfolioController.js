@@ -182,4 +182,36 @@ const getTransactions = async (req, res) => {
   }
 };
 
-module.exports = { getPortfolio, buyStock, sellStock, getTransactions };
+// DELETE /api/portfolio/:userId/reset
+const resetPortfolio = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const pRes = await pool.request()
+      .input('userId', sql.UniqueIdentifier, req.params.userId)
+      .query('SELECT id FROM Portfolios WHERE user_id = @userId');
+    if (!pRes.recordset.length) return res.status(404).json({ error: 'Portfolio tidak ditemukan' });
+    
+    const portfolioId = pRes.recordset[0].id;
+
+    // Reset saldo ke 100M
+    await pool.request()
+      .input('portfolioId', sql.UniqueIdentifier, portfolioId)
+      .query('UPDATE Portfolios SET cash_balance = 100000000.00, updated_at = CURRENT_TIMESTAMP WHERE id = @portfolioId');
+      
+    // Hapus semua Holdings
+    await pool.request()
+      .input('portfolioId', sql.UniqueIdentifier, portfolioId)
+      .query('DELETE FROM Holdings WHERE portfolio_id = @portfolioId');
+
+    // Hapus semua Transactions
+    await pool.request()
+      .input('portfolioId', sql.UniqueIdentifier, portfolioId)
+      .query('DELETE FROM Transactions WHERE portfolio_id = @portfolioId');
+
+    res.json({ message: 'Portfolio berhasil direset' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { getPortfolio, buyStock, sellStock, getTransactions, resetPortfolio };

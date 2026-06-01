@@ -351,7 +351,12 @@ export const TradingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTransactions([]);
     setEquityHistory(freshHistory);
     localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    
+    // Sync to Azure SQL (fire-and-forget)
+    if (userId) {
+      api.portfolio.reset(userId).catch(err => console.warn('Portfolio sync (reset) failed:', err.message));
+    }
+  }, [userId]);
 
   return (
     <TradingContext.Provider value={{

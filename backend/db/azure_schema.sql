@@ -81,6 +81,13 @@ CREATE TABLE User_Course_Progress (
     PRIMARY KEY (user_id, course_id)
 );
 
+CREATE TABLE User_Watched_Videos (
+    user_id UNIQUEIDENTIFIER NOT NULL FOREIGN KEY REFERENCES Users(id) ON DELETE CASCADE,
+    video_id VARCHAR(50) NOT NULL,
+    watched_at DATETIME2 DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, video_id)
+);
+
 -- ==========================================
 -- 4. MENTORSHIP (AI CHAT)
 -- ==========================================

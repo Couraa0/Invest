@@ -4,13 +4,29 @@ InvestAI adalah platform pembelajaran dan paper trading (simulasi saham) kompreh
 
 Aplikasi ini menggunakan teknologi AI modern untuk menganalisis dan memandu Anda dalam keputusan investasi.
 
-## 🏗️ Struktur Proyek
+## 🏗️ Struktur Proyek & Teknologi
 
-Proyek ini memiliki arsitektur *microservices* lokal yang terdiri dari tiga bagian utama:
+Proyek ini memiliki arsitektur *microservices* yang memisahkan tanggung jawab antara *frontend*, *backend* logika bisnis, dan *backend* kecerdasan buatan (*AI*).
 
-1. **Frontend (React + Vite)**: Berada di *root folder* proyek. Menangani antarmuka pengguna, navigasi, dan visualisasi data.
-2. **Backend Utama (Express.js)**: Berada di folder `backend/`. Menangani autentikasi, database utama, pengguna, dan interaksi reguler.
-3. **Backend AI (FastAPI Python)**: Berada di folder `backend/ai/`. Menangani servis *machine learning*, prediksi sinyal AI, dan pemrosesan data berat.
+### 1. Frontend (React + Vite)
+- **Lokasi**: Root directory (`/`)
+- **Fungsi**: Antarmuka web modern berupa *Single Page Application* (SPA) tempat pengguna berinteraksi langsung. Mengelola manajemen *state* (autentikasi, portofolio simulasi saham), visualisasi *chart* pergerakan harga, dan tampilan *dashboard* edukasi.
+- **Teknologi**: React 18, Vite, TypeScript, TailwindCSS, Lucide React (untuk ikon), Framer Motion (untuk animasi).
+
+### 2. Backend Utama (Express.js)
+- **Lokasi**: `/backend`
+- **Fungsi**: *Core API server* yang melayani permintaan dari frontend. Menangani registrasi & autentikasi (JWT + Google OAuth), mengelola transaksi simulasi *paper trading* (beli/jual saham, riwayat saldo), progres belajar akademi, dan menyimpan riwayat *chat mentorship*.
+- **Teknologi**: Node.js, Express.js, JSON Web Tokens (JWT), `@azure/msal-node`.
+
+### 3. Backend AI (FastAPI)
+- **Lokasi**: `/backend/ai`
+- **Fungsi**: Server khusus yang bertugas melakukan komputasi berat. Modul ini bertugas menarik data saham harian (*historical data*) dari Yahoo Finance, menghitung 35 indikator teknikal secara *real-time*, memasukkan data ke model XGBoost untuk memprediksi sinyal saham (BULLISH/BEARISH), dan melayani *AI Chat Mentor* dengan model Groq Llama 3.
+- **Teknologi**: Python, FastAPI, Uvicorn, Pandas, Scikit-Learn, XGBoost, Groq API, yfinance, TA-Lib (alternatif).
+
+### 4. Database (Azure SQL)
+- **Lokasi**: *Cloud-hosted* (skema SQL ada di `/backend/db`)
+- **Fungsi**: Penyimpanan data utama yang relasional (*RDBMS*). Menyimpan tabel `Users`, `Portfolios`, `Holdings` (saham yang dimiliki di simulator), `Transactions`, `Mentorship_Sessions`, dan `User_Watched_Videos` (progres akademi).
+- **Teknologi**: Microsoft Azure SQL Database.
 
 ---
 

@@ -60,31 +60,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Idle Timeout (3 hours = 10,800,000 ms)
-  useEffect(() => {
-    if (!isAuthenticated) return;
 
-    const timeoutDuration = 3 * 60 * 60 * 1000; // 3 hours
-    let idleTimer: ReturnType<typeof setTimeout>;
-
-    const resetTimer = () => {
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        logout();
-        window.location.href = '/login'; // Force redirect to login on timeout
-      }, timeoutDuration);
-    };
-
-    resetTimer(); // Initialize timer
-
-    const events = ['mousemove', 'keydown', 'scroll', 'click'];
-    events.forEach(event => window.addEventListener(event, resetTimer));
-
-    return () => {
-      clearTimeout(idleTimer);
-      events.forEach(event => window.removeEventListener(event, resetTimer));
-    };
-  }, [isAuthenticated, logout]);
 
   const setInvestorLevel = (level: InvestorLevel) => {
     setInvestorLevelState(level);
@@ -146,6 +122,32 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('investorLevel');
     localStorage.removeItem('paper_trading_state');
   }, []);
+
+  // Idle Timeout (3 hours = 10,800,000 ms)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const timeoutDuration = 3 * 60 * 60 * 1000; // 3 hours
+    let idleTimer: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        logout();
+        window.location.href = '/login'; // Force redirect to login on timeout
+      }, timeoutDuration);
+    };
+
+    resetTimer(); // Initialize timer
+
+    const events = ['mousemove', 'keydown', 'scroll', 'click'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    return () => {
+      clearTimeout(idleTimer);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [isAuthenticated, logout]);
 
   const completeOnboarding = (level: InvestorLevel) => {
     setInvestorLevel(level);

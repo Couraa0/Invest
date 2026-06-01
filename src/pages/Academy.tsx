@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BookOpen,
@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { api } from '../lib/api';
+import { useUser } from '../context/UserContext';
 
 // ─── Data ───────────────────────────────────────────────────────────────────
 
@@ -231,7 +233,21 @@ const MODULES: Module[] = [
 
 // ─── YouTube Modal ───────────────────────────────────────────────────────────
 
-function VideoModal({ videoId, title, onClose }: { videoId: string; title: string; onClose: () => void }) {
+function VideoModal({ 
+  videoId, 
+  title, 
+  onClose,
+  isWatched,
+  onMarkWatched,
+  isMarking
+}: { 
+  videoId: string; 
+  title: string; 
+  onClose: () => void;
+  isWatched: boolean;
+  onMarkWatched: () => void;
+  isMarking: boolean;
+}) {
   return (
     <AnimatePresence>
       <motion.div
@@ -251,18 +267,34 @@ function VideoModal({ videoId, title, onClose }: { videoId: string; title: strin
         >
           {/* Modal Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-red-500 rounded-lg flex items-center justify-center">
+            <div className="flex items-center gap-3 w-full">
+              <div className="w-7 h-7 bg-red-500 rounded-lg flex items-center justify-center shrink-0">
                 <PlayCircle className="w-4 h-4 text-white fill-white" />
               </div>
-              <p className="font-bold text-sm text-primary truncate max-w-xs">{title}</p>
+              <p className="font-bold text-sm text-primary truncate flex-1">{title}</p>
+              
+              {!isWatched ? (
+                <button
+                  onClick={onMarkWatched}
+                  disabled={isMarking}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {isMarking ? 'Loading...' : 'Tandai Selesai'}
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold whitespace-nowrap shadow-sm">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
+                </div>
+              )}
+
+              <button
+                onClick={onClose}
+                className="p-1.5 ml-2 rounded-lg hover:bg-slate-100 text-on-surface-variant transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-on-surface-variant transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
 
           {/* Embed */}
@@ -283,15 +315,19 @@ function VideoModal({ videoId, title, onClose }: { videoId: string; title: strin
 
 // ─── Curriculum Item ─────────────────────────────────────────────────────────
 
-function CurriculumItem({ curriculum, moduleColor, onPlay }: {
+function CurriculumItem({ curriculum, moduleColor, onPlay, isWatched }: {
+  key?: React.Key;
   curriculum: Curriculum;
   moduleColor: string;
   onPlay: (curriculum: Curriculum) => void;
+  isWatched: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="border border-slate-100 rounded-xl overflow-hidden bg-white hover:border-slate-200 hover:shadow-sm transition-all">
+    <div className={cn("border rounded-xl overflow-hidden bg-white hover:shadow-sm transition-all",
+      isWatched ? "border-emerald-200" : "border-slate-100 hover:border-slate-200"
+    )}>
       {/* Header Row */}
       <button
         className="w-full flex items-center gap-4 p-4 text-left"
@@ -316,12 +352,18 @@ function CurriculumItem({ curriculum, moduleColor, onPlay }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded-md border whitespace-nowrap',
+              isWatched ? 'text-emerald-600 bg-emerald-50 border-emerald-200' :
               moduleColor === 'text-blue-600' ? 'text-blue-600 bg-blue-50 border-blue-100' :
               moduleColor === 'text-violet-600' ? 'text-violet-600 bg-violet-50 border-violet-100' :
               'text-emerald-600 bg-emerald-50 border-emerald-100'
             )}>
               Kurikulum {curriculum.id}
             </span>
+            {isWatched && (
+              <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500 text-white whitespace-nowrap shadow-sm">
+                <CheckCircle2 className="w-2.5 h-2.5" /> Selesai
+              </span>
+            )}
           </div>
           <p className="text-sm font-semibold text-primary leading-snug line-clamp-2 mt-1">{curriculum.title}</p>
           <div className="flex items-center gap-1.5 mt-1">
@@ -377,10 +419,12 @@ function CurriculumItem({ curriculum, moduleColor, onPlay }: {
 
 // ─── Module Card ─────────────────────────────────────────────────────────────
 
-function ModuleCard({ module, index, onPlay }: {
+function ModuleCard({ module, index, onPlay, watchedVideos }: {
+  key?: React.Key;
   module: Module;
   index: number;
   onPlay: (curriculum: Curriculum) => void;
+  watchedVideos: string[];
 }) {
   const [expanded, setExpanded] = useState(index === 0);
   const Icon = module.icon;
@@ -449,6 +493,7 @@ function ModuleCard({ module, index, onPlay }: {
                   curriculum={curriculum}
                   moduleColor={module.color}
                   onPlay={onPlay}
+                  isWatched={watchedVideos.includes(curriculum.id)}
                 />
               ))}
             </div>
@@ -462,7 +507,29 @@ function ModuleCard({ module, index, onPlay }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Academy() {
+  const { user } = useUser();
   const [activeVideo, setActiveVideo] = useState<Curriculum | null>(null);
+  const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
+  const [isMarking, setIsMarking] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      api.academy.getWatched(user.id).then(setWatchedVideos).catch(console.error);
+    }
+  }, [user]);
+
+  const handleMarkWatched = async (videoId: string) => {
+    if (!user || watchedVideos.includes(videoId)) return;
+    setIsMarking(true);
+    try {
+      await api.academy.markWatched(user.id, videoId);
+      setWatchedVideos(prev => [...prev, videoId]);
+    } catch (err) {
+      console.error('Failed to mark as watched', err);
+    } finally {
+      setIsMarking(false);
+    }
+  };
 
   const totalCurricula = MODULES.reduce((acc, m) => acc + m.curricula.length, 0);
   const totalMinutes = MODULES.reduce((acc, m) =>
@@ -476,6 +543,9 @@ export default function Academy() {
           videoId={activeVideo.youtubeId}
           title={activeVideo.title}
           onClose={() => setActiveVideo(null)}
+          isWatched={watchedVideos.includes(activeVideo.id)}
+          onMarkWatched={() => handleMarkWatched(activeVideo.id)}
+          isMarking={isMarking}
         />
       )}
 
@@ -584,6 +654,7 @@ export default function Academy() {
                 module={module}
                 index={i}
                 onPlay={setActiveVideo}
+                watchedVideos={watchedVideos}
               />
             ))}
           </div>

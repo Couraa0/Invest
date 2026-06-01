@@ -245,6 +245,12 @@ export default function Signals() {
 
   // ── Data yang ditampilkan ─────────────────────────────────────────────────
 
+  let totalStocksCount = 0;
+  Object.values(categoryMeta).forEach((curr: any) => { totalStocksCount += curr.length; });
+  const loadedTotalCount = categories.reduce((acc, cat) => acc + (categoryStates[cat]?.data?.length || 0), 0);
+  const isAllLoaded = categories.length > 0 && categories.every(cat => categoryStates[cat]?.loaded);
+  const displayCountText = isAllLoaded ? loadedTotalCount.toString() : (totalStocksCount > 0 ? totalStocksCount.toString() : '90+');
+
   const allStocks: StockData[] = (() => {
     if (activeCategory === 'Semua') {
       const all: StockData[] = [];
@@ -363,7 +369,7 @@ export default function Signals() {
             {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-primary tracking-tight">Sinyal AI — 90+ Saham IDX</h1>
+                <h1 className="text-2xl font-bold text-primary tracking-tight">Sinyal AI — {displayCountText} Saham IDX</h1>
                 <p className="text-sm text-on-surface-variant/60 mt-1">
                   Prediksi XGBoost real-time · {allStocks.length} saham termuat
                   {lastUpdated && (
@@ -417,7 +423,7 @@ export default function Signals() {
                     "px-1.5 py-0.5 rounded-md text-[9px] font-bold",
                     activeCategory === 'Semua' ? "bg-white/20" : "bg-slate-100"
                   )}>
-                    {allStocks.length || '90+'}
+                    {displayCountText}
                   </span>
                 </button>
 

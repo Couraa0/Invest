@@ -92,4 +92,36 @@ const updateProgress = async (req, res) => {
   }
 };
 
-module.exports = { getCourses, getCourseDetail, getUserProgress, enrollCourse, updateProgress };
+// GET /api/academy/watched/:userId
+const getWatchedVideos = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('userId', sql.UniqueIdentifier, req.params.userId)
+      .query('SELECT video_id FROM User_Watched_Videos WHERE user_id = @userId');
+    res.json(result.recordset.map(row => row.video_id));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/academy/watched/:userId
+const markVideoWatched = async (req, res) => {
+  const { video_id } = req.body;
+  if (!video_id) return res.status(400).json({ error: 'video_id wajib diisi' });
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('userId', sql.UniqueIdentifier, req.params.userId)
+      .input('videoId', sql.VarChar, video_id)
+      .query(`
+        IF NOT EXISTS (SELECT 1 FROM User_Watched_Videos WHERE user_id = @userId AND video_id = @videoId)
+          INSERT INTO User_Watched_Videos (user_id, video_id) VALUES (@userId, @videoId)
+      `);
+    res.json({ message: 'Video ditandai selesai' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { getCourses, getCourseDetail, getUserProgress, enrollCourse, updateProgress, getWatchedVideos, markVideoWatched };

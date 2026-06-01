@@ -156,9 +156,23 @@ export default function Mentorship() {
     setIsTyping(true);
 
     try {
+      let currentSessionId = activeSessionId;
+
+      // If there is no active session (first chat), create one!
+      if (!currentSessionId && userId) {
+        const autoTitle = userMsg.slice(0, 50);
+        const session = await api.mentorship.createSession(userId, autoTitle);
+        currentSessionId = session.id;
+        setActiveSessionId(currentSessionId);
+        setSessions(prev => [{ id: session.id, title: autoTitle, updated_at: session.created_at }, ...prev]);
+        
+        // Save the first welcome message to DB as well (so history isn't missing it)
+        api.mentorship.addMessage(currentSessionId, 'ai', messages[0].content).catch(() => {});
+      }
+
       // Save user message to DB
-      if (activeSessionId) {
-        api.mentorship.addMessage(activeSessionId, 'user', userMsg).catch(() => {});
+      if (currentSessionId) {
+        api.mentorship.addMessage(currentSessionId, 'user', userMsg).catch(() => {});
       }
 
       const response = await fetch(`${API_BASE}/api/mentor/chat`, {
@@ -176,15 +190,18 @@ export default function Mentorship() {
       setMessages(prev => [...prev, { role: 'assistant', content: aiContent }]);
 
       // Save AI reply to DB
-      if (activeSessionId) {
-        api.mentorship.addMessage(activeSessionId, 'ai', aiContent).catch(() => {});
+      if (currentSessionId) {
+        api.mentorship.addMessage(currentSessionId, 'ai', aiContent).catch(() => {});
         // Auto-update session title from first user message
-        const currentSession = sessions.find(s => s.id === activeSessionId);
-        if (currentSession?.title === 'New Session') {
-          const autoTitle = userMsg.slice(0, 50);
-          api.mentorship.updateTitle(activeSessionId, autoTitle).catch(() => {});
-          setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, title: autoTitle } : s));
-        }
+        setSessions(prev => {
+          const currentSession = prev.find(s => s.id === currentSessionId);
+          if (currentSession?.title === 'New Session') {
+            const autoTitle = userMsg.slice(0, 50);
+            api.mentorship.updateTitle(currentSessionId, autoTitle).catch(() => {});
+            return prev.map(s => s.id === currentSessionId ? { ...s, title: autoTitle } : s);
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error('Error chatting with mentor:', error);

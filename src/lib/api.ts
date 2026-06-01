@@ -114,6 +114,7 @@ export const api = {
       id: string; type: 'BUY' | 'SELL'; stock_symbol: string;
       lot_count: number; price_per_share: number; total_value: number; transaction_date: string;
     }[]>(`/api/portfolio/${userId}/transactions`),
+    reset: (userId: string) => apiFetch<{ message: string }>(`/api/portfolio/${userId}/reset`, { method: 'DELETE' }),
   },
 
   // ─── Mentorship (Protected) ───────────────────────────────────────────────
@@ -158,5 +159,10 @@ export const api = {
       apiFetch<{ message: string }>(`/api/academy/progress/${userId}/${courseId}`, {
         method: 'PATCH', body: JSON.stringify({ progress_percentage, status }),
       }),
+    getWatched: (userId: string) => apiFetch<string[]>(`/api/academy/watched/${userId}`),
+    markWatched: (userId: string, videoId: string) => apiFetch<{ message: string }>(`/api/academy/watched/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ video_id: videoId }),
+    }),
   },
 };
