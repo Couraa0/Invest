@@ -15,6 +15,7 @@ interface UserContextType {
   logout: () => void;
   hasCompletedOnboarding: boolean;
   completeOnboarding: (level: InvestorLevel) => void;
+  updateProfile: (payload: Partial<{ full_name: string; risk_profile: string; avatar_url: string }>) => Promise<{ success: boolean; message: string }>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -126,6 +127,23 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('hasCompletedOnboarding', 'true');
   };
 
+  const updateProfile = useCallback(async (payload: Partial<{ full_name: string; risk_profile: string; avatar_url: string }>) => {
+    if (!user) return { success: false, message: 'Not logged in' };
+    try {
+      const res = await api.users.update(user.id, payload);
+      setUser(res.user);
+      localStorage.setItem('investai_user', JSON.stringify(res.user));
+      // Update investorLevel if risk profile changed
+      if (res.user.risk_profile === 'Agresif') setInvestorLevel('Berpengalaman');
+      else if (res.user.risk_profile === 'Moderat') setInvestorLevel('Menengah');
+      else if (res.user.risk_profile === 'Konservatif') setInvestorLevel('Pemula');
+      
+      return { success: true, message: 'Profil berhasil diperbarui' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Gagal memperbarui profil' };
+    }
+  }, [user]);
+
   return (
     <UserContext.Provider value={{ 
       investorLevel, 
@@ -138,7 +156,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       register,
       logout,
       hasCompletedOnboarding,
-      completeOnboarding
+      completeOnboarding,
+      updateProfile
     }}>
       {children}
     </UserContext.Provider>

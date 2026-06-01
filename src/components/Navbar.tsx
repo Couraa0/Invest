@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { investorLevel } = useUser();
+  const { investorLevel, user } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -18,6 +18,12 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
   };
 
   const currentProfile = profileInfo[investorLevel];
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+  const userInitials = user ? getInitials(user.full_name) : currentProfile.initials;
+  const userName = user?.full_name || currentProfile.label;
 
   const getPageInfo = () => {
     const path = location.pathname;
@@ -74,15 +80,19 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-100/80 transition-all duration-200 group"
           >
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200/80 shadow-sm group-hover:border-primary/20 transition-colors">
-              <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJNDn9tNW7r8eHm_SzPyiz195oTRN2TBCM085ZSwfJCxBkH9fOhy_Ak6v70xpYyYkkDdiAlfEdz-NmEvkEWvbEif5nqrHUbwqn7Kw475IOVbTAgtdFYBtNQWprLUEnjnzg1jNXjZKHvpOMqyFUdDOyqktbuCG37XhWbS86GovntTIeMF96wUrtOtPDaSybwhV71Kbh82o-399Jz5fDVjt2M7ghLRPeQZFWMM1HTuDWqhsrS3DrI1j78ZyaDDZwC9yjRZHhH4yZA_Q"
-                alt="User profile"
-                className="w-full h-full object-cover"
-              />
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-slate-200/80 shadow-sm group-hover:border-primary/20 transition-colors flex items-center justify-center bg-primary/10 text-primary font-bold text-xs">
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{userInitials}</span>
+              )}
             </div>
             <div className="hidden sm:block text-left">
-              <p className="text-xs font-bold text-primary leading-tight">{currentProfile.label}</p>
+              <p className="text-xs font-bold text-primary leading-tight truncate max-w-[120px]">{userName}</p>
               <p className="text-[9px] font-semibold text-on-surface-variant/50 uppercase tracking-wider">{currentProfile.level}</p>
             </div>
           </button>
@@ -99,8 +109,8 @@ export default function Navbar({ onMenuClick }: { onMenuClick?: () => void }) {
                   className="absolute top-full right-0 z-50 w-52 bg-white rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/60 overflow-hidden p-1.5"
                 >
                   <div className="px-3 py-2 mb-1 border-b border-slate-100">
-                    <p className="text-xs font-bold text-primary">{currentProfile.label}</p>
-                    <p className="text-[10px] text-on-surface-variant/50 font-medium">{currentProfile.level}</p>
+                    <p className="text-xs font-bold text-primary truncate">{userName}</p>
+                    <p className="text-[10px] text-on-surface-variant/50 font-medium">{currentProfile.label}</p>
                   </div>
                   <Link
                     to="/settings"

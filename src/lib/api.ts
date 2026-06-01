@@ -55,6 +55,8 @@ export interface DbUser {
   full_name: string;
   risk_profile: string;
   membership_level: string;
+  avatar_url?: string;
+  google_id?: string;
   created_at: string;
 }
 
@@ -88,8 +90,8 @@ export const api = {
 
   users: {
     get: (id: string) => apiFetch<DbUser>(`/api/users/${id}`),
-    update: (id: string, payload: Partial<{ full_name: string; risk_profile: string; membership_level: string }>) =>
-      apiFetch<{ message: string }>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+    update: (id: string, payload: Partial<{ full_name: string; risk_profile: string; membership_level: string; avatar_url: string }>) =>
+      apiFetch<{ message: string; user: DbUser }>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   },
 
   // ─── Portfolio (Protected) ────────────────────────────────────────────────

@@ -1,12 +1,46 @@
-import { User, Bell, Shield, Wallet, ChevronRight, LogOut, Camera, Zap, HelpCircle } from 'lucide-react';
+import { User, Bell, Shield, Wallet, ChevronRight, LogOut, Camera, Zap, HelpCircle, Save, X, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useUser } from '../context/UserContext';
+import { useState, useEffect } from 'react';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { investorLevel } = useUser();
+  const { investorLevel, user, updateProfile, logout } = useUser();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    avatar_url: '',
+    risk_profile: ''
+  });
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  useEffect(() => {
+    if (user) {
+      setEditForm({
+        full_name: user.full_name || '',
+        avatar_url: user.avatar_url || '',
+        risk_profile: user.risk_profile || 'Moderat'
+      });
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    setMessage({ type: '', text: '' });
+    const res = await updateProfile(editForm);
+    setIsLoading(false);
+    if (res.success) {
+      setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
+      setTimeout(() => { setIsEditing(false); setMessage({ type: '', text: '' }); }, 2000);
+    } else {
+      setMessage({ type: 'error', text: res.message });
+    }
+  };
+
+  const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U';
 
   const labels = {
     'Pemula': 'Investor Pemula',
@@ -48,35 +82,107 @@ export default function Settings() {
       {/* Profile Card */}
       <motion.section
         custom={0} variants={fadeUp} initial="hidden" animate="visible"
-        className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 border border-slate-100 shadow-sm"
+        className="bg-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 border border-slate-100 shadow-sm relative overflow-hidden"
       >
-        <div className="relative group shrink-0">
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-slate-50 shadow-xl overflow-hidden bg-slate-50">
-            <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJNDn9tNW7r8eHm_SzPyiz195oTRN2TBCM085ZSwfJCxBkH9fOhy_Ak6v70xpYyYkkDdiAlfEdz-NmEvkEWvbEif5nqrHUbwqn7Kw475IOVbTAgtdFYBtNQWprLUEnjnzg1jNXjZKHvpOMqyFUdDOyqktbuCG37XhWbS86GovntTIeMF96wUrtOtPDaSybwhV71Kbh82o-399Jz5fDVjt2M7ghLRPeQZFWMM1HTuDWqhsrS3DrI1j78ZyaDDZwC9yjRZHhH4yZA_Q"
-              alt="Profile"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
+        <div className="relative group shrink-0 mt-2 sm:mt-0">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-slate-50 shadow-xl overflow-hidden bg-primary/10 flex items-center justify-center text-primary text-3xl font-bold">
+            {user?.avatar_url || (isEditing && editForm.avatar_url) ? (
+              <img
+                src={isEditing ? editForm.avatar_url : (user?.avatar_url || '')}
+                alt="Profile"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <span>{getInitials(user?.full_name || '')}</span>
+            )}
           </div>
-          <button className="absolute bottom-0 right-0 p-2.5 bg-white rounded-full shadow-lg text-primary hover:text-secondary transition-all duration-300 ring-1 ring-slate-100 group-hover:scale-110">
-            <Camera className="w-4 h-4" />
-          </button>
+          {isEditing && (
+            <div className="absolute bottom-0 right-0 p-2.5 bg-white rounded-full shadow-lg text-primary ring-1 ring-slate-100 pointer-events-none">
+              <Camera className="w-4 h-4" />
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 min-w-0 text-center sm:text-left flex flex-col justify-center sm:pt-2">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1.5">
-            <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight truncate">{labels[investorLevel]}</h2>
-            <div className="inline-flex mx-auto sm:mx-0 px-3 py-1 bg-gradient-to-r from-primary to-primary/80 text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-md items-center gap-1.5">
-              <Zap className="w-3 h-3 fill-current" /> Pro Member
+        <div className="flex-1 min-w-0 text-center sm:text-left flex flex-col justify-center sm:pt-2 w-full">
+          {!isEditing ? (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1.5">
+                <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight truncate">{user?.full_name || 'User'}</h2>
+                <div className="inline-flex mx-auto sm:mx-0 px-3 py-1 bg-gradient-to-r from-primary to-primary/80 text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-md items-center gap-1.5">
+                  <Zap className="w-3 h-3 fill-current" /> Pro Member
+                </div>
+              </div>
+              <p className="text-sm font-medium text-on-surface-variant/50 truncate mb-1">{user?.email}</p>
+              <p className="text-xs font-semibold text-secondary uppercase tracking-wider">{labels[investorLevel]} • {user?.risk_profile} Risk</p>
+              
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                 <button 
+                   onClick={() => setIsEditing(true)}
+                   className="px-6 py-2.5 bg-slate-50 hover:bg-slate-100 text-primary font-semibold text-sm rounded-xl transition-colors border border-slate-200/60 w-full sm:w-auto"
+                 >
+                   Edit Profil
+                 </button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-4 w-full">
+              <div>
+                <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5 uppercase tracking-wider text-left">Nama Lengkap</label>
+                <input 
+                  type="text" 
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5 uppercase tracking-wider text-left">URL Foto Profil (Opsional)</label>
+                <input 
+                  type="text" 
+                  value={editForm.avatar_url}
+                  placeholder="https://..."
+                  onChange={(e) => setEditForm({...editForm, avatar_url: e.target.value})}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5 uppercase tracking-wider text-left">Profil Risiko</label>
+                <select 
+                  value={editForm.risk_profile}
+                  onChange={(e) => setEditForm({...editForm, risk_profile: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="Konservatif">Konservatif (Aman & Terukur)</option>
+                  <option value="Moderat">Moderat (Seimbang)</option>
+                  <option value="Agresif">Agresif (Tinggi Risiko Tinggi Untung)</option>
+                </select>
+              </div>
+
+              {message.text && (
+                <div className={cn("p-3 rounded-xl text-xs font-semibold flex items-center gap-2", message.type === 'success' ? 'bg-secondary/10 text-secondary' : 'bg-red-50 text-red-600')}>
+                  {message.type === 'success' && <CheckCircle2 className="w-4 h-4" />}
+                  {message.text}
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 pt-2">
+                 <button 
+                   onClick={handleSave}
+                   disabled={isLoading}
+                   className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold text-sm rounded-xl transition-colors w-full sm:w-auto flex items-center justify-center gap-2"
+                 >
+                   {isLoading ? 'Menyimpan...' : <><Save className="w-4 h-4" /> Simpan Perubahan</>}
+                 </button>
+                 <button 
+                   onClick={() => { setIsEditing(false); setMessage({ type: '', text: '' }); }}
+                   disabled={isLoading}
+                   className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-on-surface-variant font-semibold text-sm rounded-xl transition-colors w-full sm:w-auto flex items-center justify-center gap-2"
+                 >
+                   <X className="w-4 h-4" /> Batal
+                 </button>
+              </div>
             </div>
-          </div>
-          <p className="text-sm font-medium text-on-surface-variant/50 truncate">investor.pemula@example.com</p>
-          
-          <div className="mt-6 flex flex-col sm:flex-row gap-3">
-             <button className="px-6 py-2.5 bg-slate-50 hover:bg-slate-100 text-primary font-semibold text-sm rounded-xl transition-colors border border-slate-200/60 w-full sm:w-auto">
-               Edit Profil
-             </button>
-          </div>
+          )}
         </div>
       </motion.section>
 
@@ -107,7 +213,7 @@ export default function Settings() {
         {/* Logout */}
         <motion.button
           custom={sections.length + 1} variants={fadeUp} initial="hidden" animate="visible"
-          onClick={() => navigate('/')}
+          onClick={() => { logout(); navigate('/'); }}
           whileHover={{ y: -2, scale: 0.995 }}
           whileTap={{ scale: 0.98 }}
           className="bg-red-50/30 p-5 rounded-3xl flex items-center gap-4 group text-left border border-red-50 hover:border-red-100 shadow-sm hover:shadow-md transition-all duration-300"
