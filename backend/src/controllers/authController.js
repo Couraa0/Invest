@@ -15,6 +15,16 @@ const register = async (req, res) => {
 
   try {
     const pool = await poolPromise;
+    
+    // Check if email already exists
+    const checkResult = await pool.request()
+      .input('email', sql.VarChar, email)
+      .query('SELECT id FROM Users WHERE email = @email');
+
+    if (checkResult.recordset.length > 0) {
+      return res.status(400).json({ error: 'Email sudah terdaftar' });
+    }
+
     const password_hash = await bcrypt.hash(password, 10);
 
     const result = await pool.request()
@@ -38,8 +48,9 @@ const register = async (req, res) => {
 
     res.status(201).json({ user, token });
   } catch (err) {
-    if (err.message.includes('UNIQUE') || err.message.includes('Violation of UNIQUE KEY'))
-      return res.status(409).json({ error: 'Email sudah terdaftar' });
+    if (err.message && (err.message.includes('UNIQUE') || err.message.includes('Violation of UNIQUE KEY'))) {
+      return res.status(400).json({ error: 'Email sudah terdaftar' });
+    }
     res.status(500).json({ error: err.message });
   }
 };

@@ -881,8 +881,8 @@ function IHSGChart() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch_ = async () => {
-      setLoading(true);
+    const fetch_ = async (isBackground = false) => {
+      if (!isBackground) setLoading(true);
       try {
         const res = await fetch(`${API_BASE}/api/market/ihsg?period=${period}`);
         if (!res.ok) throw new Error();
@@ -902,20 +902,26 @@ function IHSGChart() {
         }
       } catch {
         // offline fallback: generate dummy IHSG-like data
-        const base = 7200;
-        const pts: IHSGPoint[] = [];
-        let v = base;
-        for (let i = 30; i >= 0; i--) {
-          v = v + (Math.random() - 0.48) * 40;
-          pts.push({ name: `H-${i}`, price: Math.round(v) });
+        if (!isBackground) {
+          const base = 7200;
+          const pts: IHSGPoint[] = [];
+          let v = base;
+          for (let i = 30; i >= 0; i--) {
+            v = v + (Math.random() - 0.48) * 40;
+            pts.push({ name: `H-${i}`, price: Math.round(v) });
+          }
+          setData(pts);
+          setIhsg({ value: pts[pts.length - 1].price, change: 0.42, status: 'Bullish', bullish: 62 });
         }
-        setData(pts);
-        setIhsg({ value: pts[pts.length - 1].price, change: 0.42, status: 'Bullish', bullish: 62 });
       } finally {
-        setLoading(false);
+        if (!isBackground) setLoading(false);
       }
     };
     fetch_();
+
+    // Auto refresh IHSG every 10 seconds in the background
+    const timer = setInterval(() => fetch_(true), 10_000);
+    return () => clearInterval(timer);
   }, [period]);
 
   const isUp = (ihsg?.change ?? 0) >= 0;
@@ -1031,12 +1037,18 @@ export default function Simulator() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const priceUpdateRef = useRef(false);
 
-  // Live price update every 60s
+  const positionsRef = useRef(positions);
+  useEffect(() => {
+    positionsRef.current = positions;
+  }, [positions]);
+
+  // Live price update every 5s
   useEffect(() => {
     const updatePrices = async () => {
-      if (priceUpdateRef.current || positions.length === 0) return;
+      const currentPositions = positionsRef.current;
+      if (priceUpdateRef.current || currentPositions.length === 0) return;
       priceUpdateRef.current = true;
-      for (const pos of positions) {
+      for (const pos of currentPositions) {
         try {
           const res = await fetch(`${API_BASE}/api/stocks/${pos.symbol}`);
           if (res.ok) {
@@ -1047,10 +1059,10 @@ export default function Simulator() {
       }
       priceUpdateRef.current = false;
     };
-    updatePrices();
-    const timer = setInterval(updatePrices, 60_000);
+    
+    const timer = setInterval(updatePrices, 5_000);
     return () => clearInterval(timer);
-  }, [positions.length, updatePrice]);
+  }, [updatePrice]);
 
   const addToast = useCallback((message: string, type: 'success' | 'error') => {
     const id = `${Date.now()}`;
