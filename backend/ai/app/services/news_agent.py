@@ -3,7 +3,14 @@
 InvestAI — LangGraph News Scraping & Analysis Agent
 Clean Python module (refactored from Colab notebook)
 
-Flow: fetch_news → analyze_sentiment → generate_report → END
+Flow:
+    fetch_news
+        → route_by_data_quality  ──[insufficient_data]──→ END
+        → filter_articles
+        → analyze_sentiment
+        → generate_report  ←────────────────────────────────┐
+        → evaluate_output  ──[low quality, retry < 3]───────┘
+        → END
 
 Usage:
     from app.services.news_agent import analyze_ticker, build_news_agent
@@ -107,13 +114,17 @@ def _get_llm() -> ChatGroq:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class NewsAnalysisState(TypedDict):
-    ticker:         str             # input: e.g. 'BBCA.JK'
-    lookback_days:  int             # input: 7 | 30 | 90
-    raw_articles:   list            # output node 1
-    article_count:  int
-    sentiment_data: Optional[dict]  # output node 2
-    final_report:   Optional[str]   # output node 3
-    error:          Optional[str]
+    ticker:            str             # input: e.g. 'BBCA.JK'
+    lookback_days:     int             # input: 7 | 30 | 90
+    raw_articles:      list            # output fetch_news_node
+    article_count:     int
+    data_quality:      str             # "sufficient" | "insufficient_data"
+    filtered_articles: list            # output filter_articles_node
+    sentiment_data:    Optional[dict]  # output analyze_sentiment_node
+    final_report:      Optional[str]   # output generate_report_node
+    evaluation_result: Optional[dict]  # output evaluate_output_node
+    retry_count:       int             # counter untuk loop generate_report
+    error:             Optional[str]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -206,19 +217,191 @@ def fetch_news_node(state: NewsAnalysisState) -> NewsAnalysisState:
         articles = scrape_google_news(ticker, lookback_days=lookback_days, max_articles=20)
         return {
             **state,
-            'raw_articles':  articles,
-            'article_count': len(articles),
-            'error':         None,
+            'raw_articles':      articles,
+            'article_count':     len(articles),
+            'filtered_articles': [],
+            'data_quality':      'sufficient',
+            'retry_count':       0,
+            'evaluation_result': None,
+            'error':             None,
         }
     except Exception as e:
         logger.error(f"❌ [fetch_news] Error: {e}")
-        return {**state, 'raw_articles': [], 'article_count': 0, 'error': str(e)}
+        return {
+            **state,
+            'raw_articles':      [],
+            'article_count':     0,
+            'filtered_articles': [],
+            'data_quality':      'sufficient',
+            'retry_count':       0,
+            'evaluation_result': None,
+            'error':             str(e),
+        }
+
+
+def route_by_data_quality_node(state: NewsAnalysisState) -> NewsAnalysisState:
+    """
+    Node 2 (Conditional Gate): Periksa jumlah artikel.
+    - Jika < 3  → data_quality = "insufficient_data" → graph berakhir di END.
+    - Jika >= 3 → data_quality = "sufficient"        → lanjut ke filter_articles.
+    """
+    ticker        = state['ticker']
+    article_count = state.get('article_count', 0)
+    MIN_ARTICLES  = 3
+
+    if article_count < MIN_ARTICLES:
+        logger.warning(
+            f"⚠️ [route_data_quality] {ticker}: hanya {article_count} artikel "
+            f"(minimum {MIN_ARTICLES}) — flow dihentikan."
+        )
+        insufficient_report = (
+            f"## ⚠️ Data Tidak Mencukupi — {clean_ticker(ticker)}\n\n"
+            f"Hanya ditemukan **{article_count} artikel** dalam periode "
+            f"{state.get('lookback_days', 30)} hari terakhir.\n"
+            f"Diperlukan minimal {MIN_ARTICLES} artikel untuk analisis yang valid.\n\n"
+            f"**Saran:** Coba perluas periode analisis atau periksa kembali kode ticker."
+        )
+        return {
+            **state,
+            'data_quality': 'insufficient_data',
+            'final_report': insufficient_report,
+        }
+
+    logger.info(
+        f"✅ [route_data_quality] {ticker}: {article_count} artikel — cukup, lanjut ke filter."
+    )
+    return {**state, 'data_quality': 'sufficient'}
+
+
+def route_quality_edge(state: NewsAnalysisState) -> str:
+    """Conditional edge setelah route_by_data_quality_node."""
+    return state.get('data_quality', 'sufficient')
+
+
+def filter_articles_node(state: NewsAnalysisState) -> NewsAnalysisState:
+    """
+    Node 3: Filter artikel yang benar-benar relevan dengan ticker.
+
+    Dua lapis filter:
+      Layer 1 — Keyword matching (cepat, gratis):
+        Cek apakah title/summary mengandung kode ticker atau sinonimnya.
+        Artikel yang tidak menyebut ticker sama sekali langsung dibuang.
+
+      Layer 2 — LLM relevance scoring (hanya jika artikel > LLM_THRESHOLD):
+        LLM menilai relevansi setiap artikel (skor 0–10).
+        Artikel dengan skor < 5 dibuang.
+    """
+    ticker         = state['ticker']
+    articles       = state['raw_articles']
+    code           = clean_ticker(ticker)          # e.g. "BBCA"
+    LLM_THRESHOLD  = 8   # jalankan LLM hanya jika lolos keyword > 8 artikel
+
+    logger.info(f"🔍 [filter_articles] {ticker}: memulai filter {len(articles)} artikel...")
+
+    # ── Layer 1: Keyword Matching ────────────────────────────────────────────
+    # Kata kunci primer: kode saham
+    # Kata kunci sekunder: nama umum perusahaan (opsional, bisa diperluas)
+    primary_keywords   = [code.lower()]
+    secondary_keywords = []  # contoh: ["bank central asia", "bca"]
+
+    def is_relevant_by_keyword(article: dict) -> bool:
+        text = f"{article.get('title', '')} {article.get('summary', '')}".lower()
+        # Harus mengandung setidaknya satu keyword primer
+        for kw in primary_keywords:
+            if kw in text:
+                return True
+        # Atau setidaknya satu keyword sekunder (jika ada)
+        for kw in secondary_keywords:
+            if kw in text:
+                return True
+        return False
+
+    keyword_filtered = [a for a in articles if is_relevant_by_keyword(a)]
+    logger.info(
+        f"🔍 [filter_articles] Layer 1 (keyword): "
+        f"{len(articles)} → {len(keyword_filtered)} artikel"
+    )
+
+    # ── Layer 2: LLM Relevance Scoring ──────────────────────────────────────
+    if len(keyword_filtered) > LLM_THRESHOLD:
+        logger.info(
+            f"🤖 [filter_articles] Layer 2 (LLM): mengevaluasi {len(keyword_filtered)} artikel..."
+        )
+        try:
+            llm = _get_llm()
+
+            articles_text = '\n'.join([
+                f"[{i+1}] JUDUL: {a['title']} | SUMBER: {a['source']} | "
+                f"RINGKASAN: {a.get('summary', '')[:200]}"
+                for i, a in enumerate(keyword_filtered)
+            ])
+
+            system_prompt = (
+                "Kamu adalah asisten seleksi berita saham. "
+                "Nilai setiap artikel berdasarkan relevansinya dengan saham yang ditanyakan. "
+                "Jawab HANYA dengan JSON valid tanpa penjelasan tambahan."
+            )
+            user_prompt = (
+                f"Untuk saham {code} (IDX), nilai relevansi setiap artikel berikut "
+                f"dengan skor 0-10 (10 = sangat relevan, 0 = tidak relevan sama sekali).\n\n"
+                f"{articles_text}\n\n"
+                f"Output JSON:\n"
+                f"{{\"scores\": [{{\"index\": 1, \"score\": <0-10>}}, ...]}}"
+            )
+
+            response = llm.invoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt),
+            ])
+            raw = response.content.strip()
+
+            # Strip markdown fences jika ada
+            if raw.startswith('```'):
+                parts = raw.split('```')
+                raw = parts[1] if len(parts) > 1 else raw
+                if raw.startswith('json'):
+                    raw = raw[4:]
+
+            score_data   = json.loads(raw.strip())
+            score_map    = {s['index']: s['score'] for s in score_data.get('scores', [])}
+            llm_filtered = [
+                a for i, a in enumerate(keyword_filtered)
+                if score_map.get(i + 1, 10) >= 5  # default: loloskan jika tidak ada skor
+            ]
+            logger.info(
+                f"✅ [filter_articles] Layer 2 (LLM): "
+                f"{len(keyword_filtered)} → {len(llm_filtered)} artikel"
+            )
+            final_filtered = llm_filtered
+
+        except Exception as e:
+            logger.warning(
+                f"⚠️ [filter_articles] LLM scoring gagal, pakai hasil keyword saja: {e}"
+            )
+            final_filtered = keyword_filtered
+    else:
+        final_filtered = keyword_filtered
+
+    # Fallback: jika filter terlalu agresif (< 2 artikel), pakai raw_articles
+    if len(final_filtered) < 2 and len(articles) >= 2:
+        logger.warning(
+            f"⚠️ [filter_articles] Filter terlalu agresif ({len(final_filtered)} sisa), "
+            f"fallback ke semua artikel."
+        )
+        final_filtered = articles
+
+    logger.info(
+        f"✅ [filter_articles] {ticker}: "
+        f"{len(articles)} → {len(final_filtered)} artikel relevan."
+    )
+    return {**state, 'filtered_articles': final_filtered}
 
 
 def analyze_sentiment_node(state: NewsAnalysisState) -> NewsAnalysisState:
-    """Node 2: Analisis sentimen menggunakan Groq LLM."""
+    """Node 4: Analisis sentimen menggunakan Groq LLM (dari filtered_articles)."""
     ticker   = state['ticker']
-    articles = state['raw_articles']
+    # Gunakan filtered_articles jika tersedia, fallback ke raw_articles
+    articles = state.get('filtered_articles') or state.get('raw_articles', [])
 
     if not articles:
         logger.warning(f"⚠️ [analyze_sentiment] Tidak ada artikel untuk {ticker}")
@@ -321,12 +504,21 @@ Berikan output JSON dengan struktur:
 
 
 def generate_report_node(state: NewsAnalysisState) -> NewsAnalysisState:
-    """Node 3: Generate laporan analisis Bahasa Indonesia."""
+    """Node 5: Generate laporan analisis Bahasa Indonesia."""
     ticker        = state['ticker']
-    articles      = state['raw_articles']
+    articles      = state.get('filtered_articles') or state.get('raw_articles', [])
     sentiment     = state.get('sentiment_data') or {}
     lookback_days = state.get('lookback_days', 30)
-    logger.info(f"📝 [generate_report] Menyusun laporan untuk {ticker}...")
+    retry_count   = state.get('retry_count', 0)
+    eval_issues   = (state.get('evaluation_result') or {}).get('issues', [])
+
+    if retry_count > 0:
+        logger.info(
+            f"♻️ [generate_report] Retry ke-{retry_count} untuk {ticker} "
+            f"(isu: {eval_issues})"
+        )
+    else:
+        logger.info(f"📝 [generate_report] Menyusun laporan untuk {ticker}...")
 
     llm = _get_llm()
 
@@ -335,8 +527,19 @@ def generate_report_node(state: NewsAnalysisState) -> NewsAnalysisState:
         for a in articles[:10]
     ])
 
+    # Sertakan isu dari evaluasi sebelumnya jika ini adalah retry
+    revision_note = ''
+    if eval_issues:
+        issues_str = ', '.join(eval_issues)
+        revision_note = (
+            f"\n\n⚠️ CATATAN REVISI (dari evaluasi sebelumnya):\n"
+            f"Perbaiki masalah berikut: {issues_str}\n"
+            f"Pastikan sentimen konsisten, rekomendasi tidak kontradiktif, "
+            f"dan kesimpulan didukung oleh data."
+        )
+
     user_prompt = f"""Buat laporan analisis berita saham {clean_ticker(ticker)} (IDX) dalam Bahasa Indonesia.
-Periode analisis: {lookback_days} hari terakhir.
+Periode analisis: {lookback_days} hari terakhir.{revision_note}
 
 Data Sentimen:
 {json.dumps(sentiment, ensure_ascii=False, indent=2)}
@@ -369,10 +572,156 @@ Laporan ini dibuat otomatis berdasarkan analisis berita dan bukan merupakan sara
         response = llm.invoke([HumanMessage(content=user_prompt)])
         report = response.content.strip()
         logger.info(f"✅ [generate_report] Selesai ({len(report)} karakter)")
-        return {**state, 'final_report': report}
+        return {**state, 'final_report': report, 'retry_count': retry_count}
     except Exception as e:
         logger.error(f"❌ [generate_report] Error: {e}")
         return {**state, 'final_report': f"Error generating report: {e}"}
+
+
+def evaluate_output_node(state: NewsAnalysisState) -> NewsAnalysisState:
+    """
+    Node 6: Evaluasi kualitas laporan yang dihasilkan generate_report_node.
+
+    LLM menilai:
+    - Konsistensi sentimen dengan data berita
+    - Kejelasan dan kelengkapan rekomendasi
+    - Tidak ada kontradiksi internal
+
+    Jika skor < 65 dan retry_count < 2 → trigger retry ke generate_report.
+    Jika skor >= 65 atau retry_count >= 2 → lanjut ke END.
+    """
+    ticker      = state['ticker']
+    report      = state.get('final_report', '')
+    sentiment   = state.get('sentiment_data') or {}
+    retry_count = state.get('retry_count', 0)
+    MAX_RETRY   = 2
+
+    logger.info(
+        f"🔬 [evaluate_output] Mengevaluasi laporan {ticker} "
+        f"(retry_count={retry_count})..."
+    )
+
+    if not report or report.startswith('Error'):
+        logger.warning(f"⚠️ [evaluate_output] Laporan kosong/error — skip evaluasi.")
+        return {
+            **state,
+            'evaluation_result': {
+                'quality_score':          0,
+                'sentiment_consistent':   False,
+                'recommendation_clear':   False,
+                'issues':                 ['Laporan kosong atau terjadi error saat generate'],
+                'verdict':                'NEEDS_REVISION',
+            },
+            'retry_count': retry_count + 1,
+        }
+
+    try:
+        llm = _get_llm()
+
+        # Ringkas artikel untuk konteks evaluasi
+        articles      = state.get('filtered_articles') or state.get('raw_articles', [])
+        article_titles = '\n'.join([
+            f"- {a.get('date', 'N/A')}: {a.get('title', '')}"
+            for a in articles[:10]
+        ])
+
+        system_prompt = (
+            "Kamu adalah quality assurance analis laporan saham. "
+            "Evaluasi laporan yang diberikan secara objektif dan kritis. "
+            "Jawab HANYA dalam format JSON valid, tanpa teks di luar JSON."
+        )
+
+        user_prompt = f"""Evaluasi kualitas laporan analisis berita saham berikut untuk {clean_ticker(ticker)}.
+
+Data sentimen yang digunakan:
+{json.dumps(sentiment, ensure_ascii=False, indent=2)}
+
+Artikel berita yang dianalisis:
+{article_titles if article_titles else "(tidak ada)"}
+
+Laporan yang dievaluasi:
+{report[:3000]}{'...(dipotong)' if len(report) > 3000 else ''}
+
+Berikan evaluasi dalam JSON:
+{{
+  "quality_score": <0-100>,
+  "sentiment_consistent": <true/false: apakah sentimen laporan sesuai data sentimen>,
+  "recommendation_clear": <true/false: apakah rekomendasi jelas dan tidak kontradiktif>,
+  "issues": ["<isu spesifik jika ada, atau kosong []>"],
+  "verdict": "APPROVED" | "NEEDS_REVISION"
+}}
+
+Kriteria APPROVED: quality_score >= 65, sentimen konsisten, rekomendasi jelas."""
+
+        response = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt),
+        ])
+        raw = response.content.strip()
+
+        # Strip markdown fences jika ada
+        if raw.startswith('```'):
+            parts = raw.split('```')
+            raw = parts[1] if len(parts) > 1 else raw
+            if raw.startswith('json'):
+                raw = raw[4:]
+
+        eval_result = json.loads(raw.strip())
+        quality_score = eval_result.get('quality_score', 0)
+        verdict       = eval_result.get('verdict', 'NEEDS_REVISION')
+
+        logger.info(
+            f"🔬 [evaluate_output] {ticker}: skor={quality_score}, "
+            f"verdict={verdict}, retry_count={retry_count}"
+        )
+
+        # Force APPROVED jika sudah mencapai max retry
+        if retry_count >= MAX_RETRY and verdict == 'NEEDS_REVISION':
+            logger.warning(
+                f"⚠️ [evaluate_output] Max retry ({MAX_RETRY}) tercapai — "
+                f"paksa END meskipun verdict NEEDS_REVISION."
+            )
+            eval_result['verdict']        = 'APPROVED'
+            eval_result['forced_approve'] = True
+
+        return {
+            **state,
+            'evaluation_result': eval_result,
+            'retry_count':       retry_count + 1,
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ [evaluate_output] JSON parse error: {e}")
+        # Jika parse gagal, anggap approved agar tidak infinite loop
+        return {
+            **state,
+            'evaluation_result': {
+                'quality_score':        50,
+                'sentiment_consistent': True,
+                'recommendation_clear': True,
+                'issues':               [f'Evaluasi gagal diparse: {e}'],
+                'verdict':              'APPROVED',
+            },
+            'retry_count': retry_count + 1,
+        }
+    except Exception as e:
+        logger.error(f"❌ [evaluate_output] LLM error: {e}")
+        return {
+            **state,
+            'evaluation_result': {
+                'quality_score': 50,
+                'issues':        [f'Evaluasi error: {e}'],
+                'verdict':       'APPROVED',  # fail-safe: jangan block flow
+            },
+            'retry_count': retry_count + 1,
+        }
+
+
+def route_evaluation_edge(state: NewsAnalysisState) -> str:
+    """Conditional edge setelah evaluate_output_node."""
+    result  = state.get('evaluation_result') or {}
+    verdict = result.get('verdict', 'APPROVED')
+    return 'end' if verdict == 'APPROVED' else 'retry'
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -382,18 +731,53 @@ Laporan ini dibuat otomatis berdasarkan analisis berita dan bukan merupakan sara
 def build_news_agent():
     """
     Kompilasi LangGraph news analysis agent.
-    Flow: fetch_news → analyze_sentiment → generate_report → END
+
+    Flow:
+        fetch_news
+            → route_by_data_quality  ──[insufficient_data]──→ END
+            → filter_articles
+            → analyze_sentiment
+            → generate_report  ←────────────────────────────────┐
+            → evaluate_output  ──[NEEDS_REVISION, retry < 3]────┘
+            → END
     """
     graph = StateGraph(NewsAnalysisState)
 
-    graph.add_node('fetch_news',        fetch_news_node)
-    graph.add_node('analyze_sentiment', analyze_sentiment_node)
-    graph.add_node('generate_report',   generate_report_node)
+    # ── Daftarkan semua node ─────────────────────────────────────────────────
+    graph.add_node('fetch_news',           fetch_news_node)
+    graph.add_node('route_data_quality',   route_by_data_quality_node)
+    graph.add_node('filter_articles',      filter_articles_node)
+    graph.add_node('analyze_sentiment',    analyze_sentiment_node)
+    graph.add_node('generate_report',      generate_report_node)
+    graph.add_node('evaluate_output',      evaluate_output_node)
 
+    # ── Entry point & linear edges ───────────────────────────────────────────
     graph.set_entry_point('fetch_news')
-    graph.add_edge('fetch_news',        'analyze_sentiment')
+    graph.add_edge('fetch_news',        'route_data_quality')
+
+    # ── Conditional: sufficient vs insufficient_data ─────────────────────────
+    graph.add_conditional_edges(
+        'route_data_quality',
+        route_quality_edge,
+        {
+            'sufficient':        'filter_articles',
+            'insufficient_data': END,
+        }
+    )
+
+    graph.add_edge('filter_articles',   'analyze_sentiment')
     graph.add_edge('analyze_sentiment', 'generate_report')
-    graph.add_edge('generate_report',   END)
+    graph.add_edge('generate_report',   'evaluate_output')
+
+    # ── Conditional: approved / max_retry → END | retry → generate_report ────
+    graph.add_conditional_edges(
+        'evaluate_output',
+        route_evaluation_edge,
+        {
+            'end':   END,
+            'retry': 'generate_report',
+        }
+    )
 
     return graph.compile()
 
@@ -406,7 +790,11 @@ def _get_agent():
     global _news_agent
     if _news_agent is None:
         _news_agent = build_news_agent()
-        logger.info("✅ LangGraph News Agent compiled: fetch_news → analyze_sentiment → generate_report")
+        logger.info(
+            "✅ LangGraph News Agent compiled: "
+            "fetch_news → route_data_quality → filter_articles → "
+            "analyze_sentiment → generate_report → evaluate_output"
+        )
     return _news_agent
 
 
@@ -434,13 +822,17 @@ def analyze_ticker(ticker: str, lookback_days: int = 30) -> dict:
     logger.info(f"🚀 Memulai analisis: {ticker} ({lookback_days} hari)")
 
     initial_state: NewsAnalysisState = {
-        'ticker':        ticker,
-        'lookback_days': lookback_days,
-        'raw_articles':  [],
-        'article_count': 0,
-        'sentiment_data': None,
-        'final_report':  None,
-        'error':         None,
+        'ticker':            ticker,
+        'lookback_days':     lookback_days,
+        'raw_articles':      [],
+        'article_count':     0,
+        'data_quality':      'sufficient',
+        'filtered_articles': [],
+        'sentiment_data':    None,
+        'final_report':      None,
+        'evaluation_result': None,
+        'retry_count':       0,
+        'error':             None,
     }
 
     agent = _get_agent()
