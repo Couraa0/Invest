@@ -417,31 +417,6 @@ export default function NewsAnalysisModal({ stock, initialDays, onClose, apiBase
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="p-5 flex flex-col gap-5"
             >
-              {/* Sentiment Overview */}
-              <div className={cn('p-5 flex items-center justify-between gap-4', sc.bg)}>
-                <div className="flex items-center gap-3">
-                  <div className={cn('w-11 h-11 rounded-xl border flex items-center justify-center', sc.bg, sc.border)}>
-                    <SentimentIcon s={result.sentiment} />
-                  </div>
-                  <div>
-                    <p className={cn('text-lg font-bold', sc.text)}>{result.sentiment}</p>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      {result.filtered_article_count ?? result.article_count} artikel relevan
-                      {result.filtered_article_count != null && result.filtered_article_count !== result.article_count && (
-                        <span className="text-slate-400"> (dari {result.article_count})</span>
-                      )}
-                      {' '}· {result.lookback_days} hari
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={cn('text-3xl font-bold tabular-nums', sc.text)}>
-                    {result.sentiment_score > 0 ? '+' : ''}{result.sentiment_score}
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-medium">Sentiment Score</p>
-                </div>
-              </div>
-
               {/* Evaluation Badge */}
               {result.evaluation_result && (
                 <div className={cn(
@@ -472,7 +447,11 @@ export default function NewsAnalysisModal({ stock, initialDays, onClose, apiBase
                     <div>
                       <p className={cn('text-base font-bold', sc.text)}>{result.sentiment}</p>
                       <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                        {result.article_count} artikel · {result.lookback_days} hari
+                        {result.filtered_article_count ?? result.article_count} artikel relevan
+                        {result.filtered_article_count != null && result.filtered_article_count !== result.article_count && (
+                          <span className="text-slate-400"> (dari {result.article_count})</span>
+                        )}
+                        {' '}· {result.lookback_days} hari
                       </p>
                     </div>
                   </div>

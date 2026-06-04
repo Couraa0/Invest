@@ -470,7 +470,11 @@ export default function Signals() {
                 {/* Per-sector tabs */}
                 {loadingCategories
                   ? Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-9 w-24 rounded-xl bg-slate-100 animate-pulse" />
+                    <div key={i} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-100 bg-white animate-pulse">
+                      <div className="w-3.5 h-3.5 bg-slate-200 rounded-full shrink-0" />
+                      <div className="w-14 h-3 bg-slate-200 rounded shrink-0" />
+                      <div className="w-5 h-3 bg-slate-100 rounded shrink-0" />
+                    </div>
                   ))
                   : categories.map(cat => {
                     const cfg = SECTOR_CONFIG[cat] ?? { emoji: '📊', short: cat.split(' ')[0] };

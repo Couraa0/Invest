@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowLeft, 
-  Share2, 
-  Star, 
-  Sparkles, 
-  TrendingUp, 
+import {
+  ArrowLeft,
+  Star,
+  Sparkles,
+  TrendingUp,
   TrendingDown,
-  CheckCircle2, 
+  CheckCircle2,
   Clock,
   ChevronRight,
   Newspaper,
@@ -18,12 +17,12 @@ import {
 import { cn } from '../lib/utils';
 import { useParams, Link } from 'react-router-dom';
 import StockIcon from '../components/StockIcon';
-import { 
-  AreaChart, 
-  Area, 
-  ResponsiveContainer, 
-  XAxis, 
-  YAxis, 
+import {
+  AreaChart,
+  Area,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
   Tooltip,
   CartesianGrid
 } from 'recharts';
@@ -31,39 +30,39 @@ import {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface StockDetail {
-  ticker:      string;
-  symbol:      string;
-  name:        string;
-  tanggal:     string;
-  harga:       number;
-  change_pct:  number;
-  prediksi:    string;
-  signal:      string;
-  action:      string;
-  confidence:  number;
-  prob_naik:   number;
-  prob_turun:  number;
+  ticker: string;
+  symbol: string;
+  name: string;
+  tanggal: string;
+  harga: number;
+  change_pct: number;
+  prediksi: string;
+  signal: string;
+  action: string;
+  confidence: number;
+  prob_naik: number;
+  prob_turun: number;
   take_profit: number;
-  stop_loss:   number;
-  strength:    string;
-  rsi:         number;
-  rsi_status:  string;
-  macd_diff:   number;
+  stop_loss: number;
+  strength: string;
+  rsi: number;
+  rsi_status: string;
+  macd_diff: number;
   macd_status: string;
-  sma20:       number;
-  ema12:       number;
-  bb_upper:    number;
-  bb_lower:    number;
-  stoch_k:     number;
-  ma_status:   string;
+  sma20: number;
+  ema12: number;
+  bb_upper: number;
+  bb_lower: number;
+  stoch_k: number;
+  ma_status: string;
 }
 
 interface ChartPoint {
-  time:   string;
-  open:   number;
-  high:   number;
-  low:    number;
-  close:  number;
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
   volume: number;
 }
 
@@ -122,15 +121,15 @@ function ChartSkeleton() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function StockDetail() {
-  const { symbol }    = useParams<{ symbol: string }>();
+  const { symbol } = useParams<{ symbol: string }>();
   const [showRecommendation, setShowRecommendation] = useState(false);
   const [activeRange, setActiveRange] = useState('1M');
 
-  const [detail, setDetail]       = useState<StockDetail | null>(null);
+  const [detail, setDetail] = useState<StockDetail | null>(null);
   const [chartData, setChartData] = useState<{ name: string; price: number }[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // ── Fetch detail + chart ─────────────────────────────────────────────────
 
@@ -150,7 +149,7 @@ export default function StockDetail() {
       // Transform chart data untuk recharts
       const raw: ChartPoint[] = json.chart ?? [];
       const mapped = raw.map(p => ({
-        name:  formatLabel(p.time, period),
+        name: formatLabel(p.time, period),
         price: p.close,
       }));
       setChartData(mapped);
@@ -238,7 +237,7 @@ export default function StockDetail() {
           </div>
         </div>
 
-        <div className="card px-5 py-3 rounded-2xl flex items-center gap-4">
+        <div className="card px-5 py-3 rounded-2xl flex items-center justify-between w-full sm:w-auto gap-4">
           <div>
             <p className="stat-label mb-1">Harga Terkini</p>
             <div className="flex items-center gap-2">
@@ -269,9 +268,6 @@ export default function StockDetail() {
             >
               <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
             </button>
-            <button className="p-2.5 bg-slate-50 rounded-xl text-on-surface-variant hover:text-primary transition-all hover:bg-slate-100 active:scale-95">
-              <Share2 className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </motion.div>
@@ -298,12 +294,7 @@ export default function StockDetail() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 stat-label">
-              <Clock className="w-3 h-3" />
-              {detail ? `Update: ${detail.tanggal}` : 'Memuat...'}
-            </div>
           </div>
-
           <div className="h-64 w-full">
             {chartLoading ? (
               <ChartSkeleton />
@@ -312,7 +303,7 @@ export default function StockDetail() {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="sdColorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor={primaryColor} stopOpacity={0.15} />
+                      <stop offset="5%" stopColor={primaryColor} stopOpacity={0.15} />
                       <stop offset="95%" stopColor={primaryColor} stopOpacity={0} />
                     </linearGradient>
                   </defs>
@@ -447,9 +438,9 @@ export default function StockDetail() {
                 </div>
               ))
               : detail && [
-                { label: 'RSI (14)',      value: detail.rsi.toFixed(1),      status: detail.rsi_status,   up: detail.rsi_status === 'Normal' },
-                { label: 'MACD',         value: detail.macd_diff.toFixed(4), status: detail.macd_status,  up: detail.macd_status === 'Bullish' },
-                { label: 'MA (20)',      value: `Rp ${formatPrice(detail.sma20)}`, status: detail.ma_status, up: detail.ma_status === 'Di Atas MA' },
+                { label: 'RSI (14)', value: detail.rsi.toFixed(1), status: detail.rsi_status, up: detail.rsi_status === 'Normal' },
+                { label: 'MACD', value: detail.macd_diff.toFixed(4), status: detail.macd_status, up: detail.macd_status === 'Bullish' },
+                { label: 'MA (20)', value: `Rp ${formatPrice(detail.sma20)}`, status: detail.ma_status, up: detail.ma_status === 'Di Atas MA' },
               ].map((ind, i) => (
                 <div key={i} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 last:pb-0">
                   <div>
@@ -481,19 +472,19 @@ export default function StockDetail() {
               </p>
             </div>
             {detail && (
-              <div className="flex items-center gap-6 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                <div className="text-center">
-                  <span className={cn("text-2xl font-bold", isBullish ? "text-secondary" : "text-error")}>
+              <div className="flex items-center gap-3 sm:gap-6 bg-slate-50 border border-slate-100 p-4 rounded-2xl w-full sm:w-auto overflow-hidden">
+                <div className="text-center shrink-0">
+                  <span className={cn("text-xl sm:text-2xl font-bold", isBullish ? "text-secondary" : "text-error")}>
                     {detail.prob_naik.toFixed(0)}%
                   </span>
                   <p className="stat-label mt-0.5">Naik</p>
                 </div>
-                <div className="w-32 h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
+                <div className="flex-1 sm:w-32 h-2.5 bg-slate-200 rounded-full overflow-hidden flex min-w-[50px]">
                   <div className="h-full bg-secondary rounded-l-full transition-all" style={{ width: `${detail.prob_naik}%` }} />
                   <div className="h-full bg-error rounded-r-full transition-all" style={{ width: `${detail.prob_turun}%` }} />
                 </div>
-                <div className="text-center">
-                  <span className="text-2xl font-bold text-error">{detail.prob_turun.toFixed(0)}%</span>
+                <div className="text-center shrink-0">
+                  <span className="text-xl sm:text-2xl font-bold text-error">{detail.prob_turun.toFixed(0)}%</span>
                   <p className="stat-label mt-0.5">Turun</p>
                 </div>
               </div>
