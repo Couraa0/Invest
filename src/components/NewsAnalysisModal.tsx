@@ -73,6 +73,7 @@ interface LoadingStep {
 
 interface Props {
   stock: StockForNews | null;
+  initialDays: number;
   onClose: () => void;
   apiBase: string;
 }
@@ -141,16 +142,14 @@ function MarkdownReport({ text }: { text: string }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
-  const [selectedDays, setSelectedDays] = useState<7 | 30 | 90>(30);
-  const [phase, setPhase] = useState<'picker' | 'loading' | 'result' | 'error'>('picker');
+export default function NewsAnalysisModal({ stock, initialDays, onClose, apiBase }: Props) {
+  const [phase, setPhase] = useState<'loading' | 'result' | 'error'>('loading');
   const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(LOADING_STEPS.map(s => ({ ...s })));
   const [currentStep, setCurrentStep] = useState(0);
   const [result, setResult] = useState<NewsResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showArticles, setShowArticles] = useState(false);
+  const analyzeRef = React.useRef<{ ticker: string, days: number } | null>(null);
 
   // Keyboard close
   useEffect(() => {
@@ -159,7 +158,7 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = React.useCallback(async () => {
     if (!stock) return;
     setPhase('loading');
     setResult(null);
@@ -174,7 +173,7 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
       const res = await fetch(`${apiBase}/api/news/analyze/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: stock.ticker, days: selectedDays }),
+        body: JSON.stringify({ ticker: stock.ticker, days: initialDays }),
       });
 
       if (!res.ok) {
@@ -242,7 +241,14 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
       setErrorMsg(msg);
       setPhase('error');
     }
-  };
+  }, [stock, initialDays, apiBase]);
+
+  useEffect(() => {
+    if (stock && (!analyzeRef.current || analyzeRef.current.ticker !== stock.ticker || analyzeRef.current.days !== initialDays)) {
+      analyzeRef.current = { ticker: stock.ticker, days: initialDays };
+      handleAnalyze();
+    }
+  }, [stock, initialDays, handleAnalyze]);
 
   if (!stock) return null;
 
@@ -254,7 +260,7 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="w-full bg-white rounded-2xl border border-slate-100 flex flex-col min-h-[500px] shadow-sm overflow-hidden"
+      className="w-full bg-white rounded-2xl border border-slate-100 flex flex-col min-h-[calc(100vh-130px)] shadow-sm overflow-hidden"
     >
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
@@ -279,70 +285,7 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
       {/* ── Scrollable Body ── */}
       <div className="overflow-y-auto flex-1 min-h-0">
 
-        {/* ──────────────── PICKER PHASE ──────────────── */}
         <AnimatePresence mode="wait">
-          {phase === 'picker' && (
-            <motion.div
-              key="picker"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="p-5 space-y-5"
-            >
-              <div>
-                <p className="text-xs font-semibold text-slate-500 mb-3 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> Pilih Periode Analisis
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {PERIOD_OPTIONS.map(opt => (
-                    <button
-                      key={opt.days}
-                      id={`news-period-${opt.days}`}
-                      onClick={() => setSelectedDays(opt.days)}
-                      className={cn(
-                        'p-3 rounded-xl border text-center transition-all',
-                        selectedDays === opt.days
-                          ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-primary/30 hover:text-primary'
-                      )}
-                    >
-                      <p className="text-sm font-bold">{opt.label}</p>
-                      <p className={cn('text-[10px] mt-0.5 font-medium', selectedDays === opt.days ? 'text-white/70' : 'text-slate-400')}>
-                        {opt.desc}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[11px] text-slate-500 space-y-2">
-                <p className="font-semibold text-slate-700 flex items-center gap-1.5"><Zap className="w-3 h-3 text-primary" /> LangGraph Agent — 6 Node Pipeline</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {[
-                    { icon: '📡', label: 'Fetch News' },
-                    { icon: '🔍', label: 'Data Quality' },
-                    { icon: '🗂️', label: 'Filter Articles' },
-                    { icon: '🧠', label: 'Analyze Sentiment' },
-                    { icon: '📝', label: 'Generate Report' },
-                    { icon: '✅', label: 'Evaluate Output' },
-                  ].map((s, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-slate-500">
-                      <span>{s.icon}</span><span>{s.label}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-slate-400">Estimasi waktu: 45–90 detik · Self-healing loop aktif</p>
-              </div>
-
-              <button
-                id="news-analyze-btn"
-                onClick={handleAnalyze}
-                className="w-full py-3 bg-primary text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm shadow-primary/20"
-              >
-                <Newspaper className="w-4 h-4" />
-                Analisis {selectedDays} Hari Terakhir
-              </button>
-            </motion.div>
-          )}
-
           {/* ──────────────── LOADING PHASE ──────────────── */}
           {phase === 'loading' && (
             <motion.div
@@ -366,7 +309,7 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
                   Menganalisis {stock.symbol}...
                 </p>
                 <p className="text-xs text-slate-400">
-                  Periode: {selectedDays} hari · LangGraph AI Agent berjalan
+                  Periode: {initialDays} hari · LangGraph AI Agent berjalan
                 </p>
               </div>
 
@@ -459,7 +402,7 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
               </div>
               <button
                 id="news-retry-btn"
-                onClick={() => setPhase('picker')}
+                onClick={() => handleAnalyze()}
                 className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
               >
                 Coba Lagi
@@ -661,10 +604,10 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
 
                 <button
                   id="news-analyze-again-btn"
-                  onClick={() => setPhase('picker')}
+                  onClick={onClose}
                   className="w-full sm:w-auto px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/90 transition-colors shadow-sm shadow-primary/20 flex-shrink-0"
                 >
-                  Analisis Ulang
+                  Pilih Periode Lain
                 </button>
               </div>
 

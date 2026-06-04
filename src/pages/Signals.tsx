@@ -20,6 +20,7 @@ import {
   Newspaper,
 } from 'lucide-react';
 import NewsAnalysisModal, { type StockForNews } from '../components/NewsAnalysisModal';
+import NewsPickerModal from '../components/NewsPickerModal';
 import { cn } from '../lib/utils';
 import StockIcon from '../components/StockIcon';
 
@@ -148,6 +149,8 @@ export default function Signals() {
 
   // News Analysis Modal state
   const [newsStock, setNewsStock] = useState<StockForNews | null>(null);
+  const [showNewsPicker, setShowNewsPicker] = useState(false);
+  const [newsDays, setNewsDays] = useState<number>(30);
 
   // Kategori dari API
   const [categories, setCategories] = useState<string[]>([]);
@@ -166,10 +169,10 @@ export default function Signals() {
   // Ref to track which categories have been fetched (avoids closure stale state)
   const loadedRef = useRef<Set<string>>(new Set());
 
-  // Handler buka News Modal
+  // Handler buka News Picker Modal
   const openNewsModal = (stock: StockData) => {
     setNewsStock({ ticker: stock.ticker, symbol: stock.symbol, name: stock.name });
-    setView('news');
+    setShowNewsPicker(true);
   };
 
   // ── Fetch daftar kategori saat mount ─────────────────────────────────────
@@ -260,7 +263,7 @@ export default function Signals() {
 
   // ── Background Auto-Refresh ───────────
   useEffect(() => {
-    if (loadingCategories || categories.length === 0) return;
+    if (loadingCategories || categories.length === 0 || view === 'news') return;
     
     const interval = setInterval(() => {
       if (activeCategory !== 'Semua') {
@@ -277,7 +280,7 @@ export default function Signals() {
     }, 15_000); // 15 seconds auto-refresh
 
     return () => clearInterval(interval);
-  }, [activeCategory, loadingCategories, categories, fetchCategory]);
+  }, [activeCategory, loadingCategories, categories, fetchCategory, view]);
 
   // ── Data yang ditampilkan ─────────────────────────────────────────────────
 
@@ -917,7 +920,7 @@ export default function Signals() {
 
         {/* ─── Recommendation View ──────────────────────────────────────────────────── */}
         {view === 'recommendation' && selectedStock && (
-          <motion.div key="recommendation" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-5">
+          <motion.div key="recommendation" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-5 min-h-[calc(100vh-130px)]">
             {/* Header */}
             <div className="flex items-center gap-3">
               <button
@@ -992,12 +995,26 @@ export default function Signals() {
           <motion.div key="news" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>
             <NewsAnalysisModal
               stock={newsStock}
+              initialDays={newsDays}
               apiBase={API_BASE}
               onClose={() => setView('analysis')}
             />
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── News Picker Modal ── */}
+      {showNewsPicker && (
+        <NewsPickerModal
+          stock={newsStock}
+          onClose={() => setShowNewsPicker(false)}
+          onAnalyze={(days) => {
+            setNewsDays(days);
+            setShowNewsPicker(false);
+            setView('news');
+          }}
+        />
+      )}
     </div>
   );
 }

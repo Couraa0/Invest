@@ -4,12 +4,13 @@ import {
   Wallet, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown,
   History, Briefcase, Trophy, BarChart2, Search, X, Plus, Minus,
   RefreshCw, AlertCircle, CheckCircle2, ShoppingCart, ChevronDown,
-  Info, RotateCcw, Zap, LineChart, Activity, Target,
-  ChevronsUp, ChevronsDown, Sparkles,
+  Info, RotateCcw, Zap, LineChart, Activity, Target, Calculator,
+  ChevronsUp, ChevronsDown, Sparkles, ArrowLeft,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTrading } from '../context/TradingContext';
 import StockIcon from '../components/StockIcon';
+import CalculatorModal from '../components/CalculatorModal';
 import {
   AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis,
   CartesianGrid, ReferenceLine, LineChart as RechartLineChart, Line,
@@ -218,17 +219,15 @@ function StockChartPanel({
     : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 24 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 24 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-        className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
+    <motion.div
+      key="chart-view"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white md:rounded-2xl w-full md:border md:border-slate-100 flex flex-col min-h-[calc(100vh-130px)] md:shadow-sm overflow-hidden"
+    >
         {/* Panel Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 shrink-0 gap-2 sm:gap-3">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 shrink-0 gap-2 sm:gap-3 bg-gradient-to-r from-slate-50 to-white">
           <div className="flex items-center gap-3 min-w-0">
             <StockIcon symbol={stock.symbol} className="w-10 h-10 shrink-0" />
             <div className="min-w-0">
@@ -574,25 +573,26 @@ function StockChartPanel({
           </AnimatePresence>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-100 flex gap-3 shrink-0">
-          {ownedLots > 0 && (
+        {/* Footer Actions - Only on Chart Tab */}
+        {activeTab === 'chart' && (
+          <div className="px-6 py-4 border-t border-slate-100 flex gap-3 shrink-0">
+            {ownedLots > 0 && (
+              <button
+                onClick={onSell}
+                className="flex-1 py-2.5 border border-error/20 bg-error/6 text-error rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-error/10 transition-all"
+              >
+                <TrendingDown className="w-4 h-4" /> Jual ({ownedLots} lot)
+              </button>
+            )}
             <button
-              onClick={onSell}
-              className="flex-1 py-2.5 border border-error/20 bg-error/6 text-error rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-error/10 transition-all"
+              onClick={onBuy}
+              className="flex-1 py-2.5 bg-secondary text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-secondary/90 transition-all shadow-md shadow-secondary/20"
             >
-              <TrendingDown className="w-4 h-4" /> Jual ({ownedLots} lot)
+              <ShoppingCart className="w-4 h-4" /> Beli Sekarang
             </button>
-          )}
-          <button
-            onClick={onBuy}
-            className="flex-1 py-2.5 bg-secondary text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-secondary/90 transition-all shadow-md shadow-secondary/20"
-          >
-            <ShoppingCart className="w-4 h-4" /> Beli Sekarang
-          </button>
-        </div>
+          </div>
+        )}
       </motion.div>
-    </div>
   );
 }
 
@@ -813,28 +813,25 @@ function StockPicker({ onSelect, onClose }: {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-slate-100">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-            <input
-              autoFocus type="text" placeholder="Cari saham (BBCA, Telkom...)"
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 text-on-surface-variant">
-            <X className="w-4 h-4" />
-          </button>
+    <motion.div
+      key="picker-view"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white md:rounded-2xl w-full md:border md:border-slate-100 flex flex-col min-h-[calc(100vh-130px)] md:shadow-sm overflow-hidden"
+    >
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white shrink-0">
+        <div className="relative flex-1 w-full max-w-2xl">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
+          <input
+            autoFocus type="text" placeholder="Cari nama atau kode saham (misal: BBCA, Telkom...)"
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-primary/20 shadow-sm transition-all"
+          />
         </div>
-        <div className="overflow-y-auto max-h-80">
+      </div>
+      <div className="flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6">
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           {loading && <div className="flex items-center justify-center py-12"><RefreshCw className="w-5 h-5 text-primary animate-spin" /></div>}
           {error && <div className="p-6 text-center"><AlertCircle className="w-8 h-8 text-error mx-auto mb-2" /><p className="text-xs text-on-surface-variant/60">{error}</p></div>}
           {!loading && !error && filtered.map(s => (
@@ -846,17 +843,17 @@ function StockPicker({ onSelect, onClose }: {
                 <p className="text-[10px] text-on-surface-variant/50 truncate">{s.name}</p>
               </div>
               {fetchingPrice === s.symbol
-                ? <RefreshCw className="w-4 h-4 text-primary animate-spin shrink-0" />
-                : <ChevronDown className="w-4 h-4 text-on-surface-variant/30 -rotate-90 shrink-0" />
+                ? <RefreshCw className="w-4 h-4 text-primary animate-spin" />
+                : <ChevronDown className="w-4 h-4 text-slate-300 -rotate-90" />
               }
             </button>
           ))}
-          {!loading && !error && filtered.length === 0 && (
-            <p className="text-center py-8 text-sm text-on-surface-variant/50">Saham tidak ditemukan</p>
+          {filtered.length === 0 && !loading && !error && (
+            <p className="text-center py-12 text-sm text-on-surface-variant/50 font-medium">Saham tidak ditemukan</p>
           )}
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -864,6 +861,7 @@ function StockPicker({ onSelect, onClose }: {
 
 type ModalState =
   | { type: 'picker' }
+  | { type: 'calculator' }
   | { type: 'chart'; stock: LiveStock }
   | { type: 'trade'; stock: LiveStock; mode: 'BUY' | 'SELL'; maxLotsToSell?: number }
   | null;
@@ -1102,21 +1100,6 @@ export default function Simulator() {
       <ToastContainer toasts={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />
 
       <AnimatePresence>
-        {modal?.type === 'picker' && (
-          <StockPicker
-            onSelect={stock => setModal({ type: 'chart', stock })}
-            onClose={() => setModal(null)}
-          />
-        )}
-        {modal?.type === 'chart' && (
-          <StockChartPanel
-            stock={modal.stock}
-            ownedLots={getOwnedLots(modal.stock.symbol)}
-            onClose={() => setModal(null)}
-            onBuy={() => handleChartBuy(modal.stock)}
-            onSell={() => handleChartSell(modal.stock)}
-          />
-        )}
         {modal?.type === 'trade' && (
           <TradeModal
             stock={modal.stock}
@@ -1159,19 +1142,63 @@ export default function Simulator() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/8 border border-secondary/12 text-secondary text-[10px] font-semibold uppercase tracking-wider mb-2">
-              <Zap className="w-3 h-3 fill-current" /> Paper Trading Live
+      <AnimatePresence mode="wait">
+        {modal?.type === 'picker' ? (
+          <motion.div key="picker-view-wrapper" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="w-full flex flex-col gap-4">
+            <div className="flex items-center gap-3 px-1">
+              <button onClick={() => setModal(null)} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm shrink-0">
+                <ArrowLeft className="w-5 h-5 text-slate-600" />
+              </button>
+              <span className="font-bold text-slate-600 text-sm">Kembali</span>
             </div>
-            <h1 className="text-2xl font-bold text-primary tracking-tight truncate w-full">Simulasi Trading</h1>
-            <p className="text-sm text-on-surface-variant/60 mt-0.5 leading-snug">Beli & jual saham IDX · Chart & simulasi harga · Data real-time</p>
-          </div>
+            <StockPicker
+              onSelect={stock => setModal({ type: 'chart', stock })}
+              onClose={() => setModal(null)}
+            />
+          </motion.div>
+        ) : modal?.type === 'chart' ? (
+          <motion.div key="chart-view-wrapper" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="w-full flex flex-col gap-4">
+            <div className="flex items-center gap-3 px-1">
+              <button onClick={() => setModal(null)} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm shrink-0">
+                <ArrowLeft className="w-5 h-5 text-slate-600" />
+              </button>
+              <span className="font-bold text-slate-600 text-sm">Kembali</span>
+            </div>
+            <StockChartPanel
+              stock={modal.stock}
+              ownedLots={getOwnedLots(modal.stock.symbol)}
+              onClose={() => setModal(null)}
+              onBuy={() => handleChartBuy(modal.stock)}
+              onSell={() => handleChartSell(modal.stock)}
+            />
+          </motion.div>
+        ) : modal?.type === 'calculator' ? (
+          <motion.div key="calc-view-wrapper" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="w-full flex flex-col gap-4">
+            <div className="flex items-center gap-3 px-1">
+              <button onClick={() => setModal(null)} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm shrink-0">
+                <ArrowLeft className="w-5 h-5 text-slate-600" />
+              </button>
+              <span className="font-bold text-slate-600 text-sm">Kembali</span>
+            </div>
+            <CalculatorModal onClose={() => setModal(null)} />
+          </motion.div>
+        ) : (
+          <motion.div key="dashboard-view" initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }} className="space-y-5">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/8 border border-secondary/12 text-secondary text-[10px] font-semibold uppercase tracking-wider mb-2">
+                  <Zap className="w-3 h-3 fill-current" /> Paper Trading Live
+                </div>
+                <h1 className="text-2xl font-bold text-primary tracking-tight truncate w-full">Simulasi Trading</h1>
+                <p className="text-sm text-on-surface-variant/60 mt-0.5 leading-snug">Beli & jual saham IDX · Chart & simulasi harga · Data real-time</p>
+              </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setShowResetConfirm(true)} className="p-2.5 bg-white border border-slate-200 rounded-xl text-on-surface-variant hover:text-error hover:border-error/20 transition-all shadow-sm" title="Reset">
               <RotateCcw className="w-4 h-4" />
+            </button>
+            <button onClick={() => setModal({ type: 'calculator' })} className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-bold hover:bg-primary/15 transition-all shadow-sm active:scale-[0.97]">
+              <Calculator className="w-4 h-4" /> Kalkulator
             </button>
             <button onClick={() => setModal({ type: 'picker' })} className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white rounded-xl text-sm font-bold hover:bg-secondary/90 transition-all shadow-md shadow-secondary/20 active:scale-[0.97]">
               <ShoppingCart className="w-4 h-4" /> Beli Saham
@@ -1291,7 +1318,68 @@ export default function Simulator() {
                       </button>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="md:hidden flex flex-col gap-4">
+                      {positions.map(pos => (
+                        <div key={pos.symbol} className="bg-slate-50/50 border border-slate-100 rounded-xl p-4 flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <button
+                              onClick={() => setModal({ type: 'chart', stock: { ticker: `${pos.symbol}.JK`, symbol: pos.symbol, name: pos.name, harga: pos.currentPrice, change_pct: pos.unrealizedPct, signal: pos.unrealizedPnL >= 0 ? 'BULLISH' : 'BEARISH', action: pos.unrealizedPnL >= 0 ? 'BUY' : 'SELL', confidence: 0, category: '' } })}
+                              className="flex items-center gap-3 text-left"
+                            >
+                              <StockIcon symbol={pos.symbol} className="w-9 h-9 shrink-0" />
+                              <div>
+                                <p className="text-sm font-bold text-primary">{pos.symbol}</p>
+                                <p className="text-[10px] text-on-surface-variant/50 line-clamp-1">{pos.name}</p>
+                              </div>
+                            </button>
+                            <div className="text-right">
+                              <p className={cn('text-sm font-bold', pos.unrealizedPnL >= 0 ? 'text-secondary' : 'text-error')}>
+                                {pos.unrealizedPnL >= 0 ? '+' : ''}{formatRp(pos.unrealizedPnL, true)}
+                              </p>
+                              <p className={cn('text-[10px] font-semibold', pos.unrealizedPct >= 0 ? 'text-secondary' : 'text-error')}>
+                                {pos.unrealizedPct >= 0 ? '+' : ''}{pos.unrealizedPct.toFixed(2)}%
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 bg-white rounded-lg p-3 border border-slate-100">
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Lot</p>
+                              <p className="text-xs font-bold text-slate-700">{pos.lots}L</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Nilai Pasar</p>
+                              <p className="text-xs font-bold text-slate-700">{formatRp(pos.currentPrice * pos.shares, true)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Harga Beli</p>
+                              <p className="text-xs font-bold text-slate-700">{formatRp(pos.buyPrice)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Harga Kini</p>
+                              <p className="text-xs font-bold text-slate-700">{formatRp(pos.currentPrice)}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              onClick={() => setModal({ type: 'chart', stock: { ticker: `${pos.symbol}.JK`, symbol: pos.symbol, name: pos.name, harga: pos.currentPrice, change_pct: pos.unrealizedPct, signal: pos.unrealizedPnL >= 0 ? 'BULLISH' : 'BEARISH', action: pos.unrealizedPnL >= 0 ? 'BUY' : 'SELL', confidence: 0, category: '' } })}
+                              className="flex-1 py-2 bg-primary/8 text-primary rounded-lg text-xs font-bold hover:bg-primary/15 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <LineChart className="w-3.5 h-3.5" /> Chart
+                            </button>
+                            <button
+                              onClick={() => handleSellClick(pos.symbol)}
+                              className="flex-1 py-2 bg-error/8 text-error border border-error/15 rounded-lg text-xs font-bold hover:bg-error/15 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Minus className="w-3.5 h-3.5" /> Jual
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-left">
                         <thead>
                           <tr className="border-b border-slate-100">
@@ -1349,6 +1437,7 @@ export default function Simulator() {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   )}
                 </motion.div>
               ) : (
@@ -1359,7 +1448,58 @@ export default function Simulator() {
                       <p className="font-semibold text-primary/50">Belum ada transaksi</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="md:hidden flex flex-col gap-4">
+                      {transactions.map(tx => (
+                        <div key={tx.id} className="bg-slate-50/50 border border-slate-100 rounded-xl p-4 flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <StockIcon symbol={tx.symbol} className="w-9 h-9 shrink-0" />
+                              <div>
+                                <p className="text-sm font-bold text-primary">{tx.symbol}</p>
+                                <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-bold uppercase',
+                                  tx.type === 'BUY' ? 'bg-secondary/10 text-secondary border border-secondary/15' : 'bg-error/10 text-error border border-error/15'
+                                )}>{tx.type}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {tx.type === 'SELL' && tx.pnl !== undefined ? (
+                                <>
+                                  <p className={cn('text-sm font-bold', tx.pnl >= 0 ? 'text-secondary' : 'text-error')}>
+                                    {tx.pnl >= 0 ? '+' : ''}{formatRp(tx.pnl, true)}
+                                  </p>
+                                  <p className={cn('text-[10px] font-semibold', tx.pnlPct! >= 0 ? 'text-secondary' : 'text-error')}>
+                                    {tx.pnlPct! >= 0 ? '+' : ''}{tx.pnlPct!.toFixed(2)}%
+                                  </p>
+                                </>
+                              ) : (
+                                <span className="text-xs text-slate-400 font-semibold">—</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 bg-white rounded-lg p-3 border border-slate-100">
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Lot</p>
+                              <p className="text-xs font-bold text-slate-700">{tx.lots}L</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Harga</p>
+                              <p className="text-xs font-bold text-slate-700">{formatRp(tx.price)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Total Nilai</p>
+                              <p className="text-xs font-bold text-slate-700">{formatRp(tx.totalValue, true)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-bold mb-0.5">Waktu</p>
+                              <p className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{fmtDate(tx.createdAt)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-left">
                         <thead>
                           <tr className="border-b border-slate-100">
@@ -1406,6 +1546,7 @@ export default function Simulator() {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   )}
                 </motion.div>
               )}
@@ -1420,7 +1561,9 @@ export default function Simulator() {
             <strong className="text-primary">Paper Trading</strong> dengan saldo virtual Rp 100.000.000. Klik nama saham di tabel untuk melihat <strong>grafik harga</strong> dan <strong>simulasi Monte Carlo</strong>. Data disimpan di browser Anda.
           </p>
         </div>
-      </div>
+        </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
