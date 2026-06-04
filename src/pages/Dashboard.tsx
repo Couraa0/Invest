@@ -474,10 +474,10 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-x-auto pb-4 snap-x md:snap-none md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-x-auto pb-4 md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0">
             {loadingStocks
               ? Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="min-w-[280px] md:min-w-0 snap-center md:snap-align-none">
+                <div key={i} className="min-w-[280px] md:min-w-0">
                   <WatchlistSkeleton />
                 </div>
               ))
@@ -486,7 +486,7 @@ export default function Dashboard() {
                   <motion.div
                     key={idx}
                     custom={idx + 2} variants={fadeUp} initial="hidden" animate="visible"
-                    className="min-w-[280px] md:min-w-0 shrink-0 snap-center md:snap-align-none"
+                    className="min-w-[280px] md:min-w-0 shrink-0"
                   >
                     <Link to={`/stock/${stock.symbol}`} className="block group">
                       <div className="card p-5 rounded-2xl hover:shadow-md hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200">
