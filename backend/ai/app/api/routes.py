@@ -366,19 +366,32 @@ class ArticleItem(BaseModel):
     summary: str
 
 
+class EvaluationResult(BaseModel):
+    quality_score:        int
+    sentiment_consistent: bool
+    recommendation_clear: bool
+    issues:               List[str]
+    verdict:              str
+    forced_approve:       Optional[bool] = False
+
+
 class NewsAnalyzeResponse(BaseModel):
-    status:          str
-    ticker:          str
-    sentiment:       str
-    sentiment_score: int
-    confidence:      str
-    article_count:   int
-    key_topics:      List[str]
-    risk_factors:    List[str]
-    catalysts:       List[str]
-    final_report:    str
-    articles:        List[ArticleItem]
-    lookback_days:   int
+    status:                 str
+    ticker:                 str
+    sentiment:              str
+    sentiment_score:        int
+    confidence:             str
+    article_count:          int
+    filtered_article_count: int
+    data_quality:           str
+    evaluation_result:      Optional[EvaluationResult] = None
+    retry_count:            int
+    key_topics:             List[str]
+    risk_factors:           List[str]
+    catalysts:              List[str]
+    final_report:           str
+    articles:               List[ArticleItem]
+    lookback_days:          int
 
 
 _news_analyze_cache: dict = {}
@@ -445,20 +458,25 @@ async def analyze_stock_news(request: NewsAnalyzeRequest):
         raise HTTPException(status_code=500, detail=f"Gagal analisis berita: {str(e)}")
 
     sentiment_data = result.get("sentiment_data") or {}
-    articles_raw   = result.get("raw_articles") or []
+    articles_raw   = result.get("filtered_articles") or result.get("raw_articles") or []
+    filtered_count = len(result.get("filtered_articles", []))
 
     response_data = {
-        "status":          "success",
-        "ticker":          ticker.replace(".JK", ""),
-        "sentiment":       sentiment_data.get("overall_sentiment", "NETRAL"),
-        "sentiment_score": int(sentiment_data.get("sentiment_score", 0)),
-        "confidence":      sentiment_data.get("confidence", "RENDAH"),
-        "article_count":   result.get("article_count", 0),
-        "key_topics":      sentiment_data.get("key_topics", []),
-        "risk_factors":    sentiment_data.get("risk_factors", []),
-        "catalysts":       sentiment_data.get("catalysts", []),
-        "final_report":    result.get("final_report") or "Laporan tidak tersedia.",
-        "articles":        [
+        "status":                 "success",
+        "ticker":                 ticker.replace(".JK", ""),
+        "sentiment":              sentiment_data.get("overall_sentiment", "NETRAL"),
+        "sentiment_score":        int(sentiment_data.get("sentiment_score", 0)),
+        "confidence":             sentiment_data.get("confidence", "RENDAH"),
+        "article_count":          result.get("article_count", 0),
+        "filtered_article_count": filtered_count,
+        "data_quality":           result.get("data_quality", "sufficient"),
+        "evaluation_result":      result.get("evaluation_result"),
+        "retry_count":            result.get("retry_count", 0),
+        "key_topics":             sentiment_data.get("key_topics", []),
+        "risk_factors":           sentiment_data.get("risk_factors", []),
+        "catalysts":              sentiment_data.get("catalysts", []),
+        "final_report":           result.get("final_report") or "Laporan tidak tersedia.",
+        "articles":               [
             {
                 "title":   a.get("title", ""),
                 "link":    a.get("link", ""),
@@ -468,7 +486,7 @@ async def analyze_stock_news(request: NewsAnalyzeRequest):
             }
             for a in articles_raw[:15]
         ],
-        "lookback_days": days,
+        "lookback_days":          days,
     }
 
     # Simpan ke cache

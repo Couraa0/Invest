@@ -36,24 +36,38 @@ interface ArticleItem {
   summary: string;
 }
 
+interface EvaluationResult {
+  quality_score:        number;
+  sentiment_consistent: boolean;
+  recommendation_clear: boolean;
+  issues:               string[];
+  verdict:              'APPROVED' | 'NEEDS_REVISION';
+  forced_approve?:      boolean;
+}
+
 interface NewsResult {
-  status:          string;
-  ticker:          string;
-  sentiment:       'BULLISH' | 'BEARISH' | 'NETRAL';
-  sentiment_score: number;
-  confidence:      'TINGGI' | 'SEDANG' | 'RENDAH';
-  article_count:   number;
-  key_topics:      string[];
-  risk_factors:    string[];
-  catalysts:       string[];
-  final_report:    string;
-  articles:        ArticleItem[];
-  lookback_days:   number;
+  status:                 string;
+  ticker:                 string;
+  sentiment:              'BULLISH' | 'BEARISH' | 'NETRAL';
+  sentiment_score:        number;
+  confidence:             'TINGGI' | 'SEDANG' | 'RENDAH';
+  article_count:          number;
+  filtered_article_count: number;
+  data_quality:           string;
+  evaluation_result:      EvaluationResult | null;
+  retry_count:            number;
+  key_topics:             string[];
+  risk_factors:           string[];
+  catalysts:              string[];
+  final_report:           string;
+  articles:               ArticleItem[];
+  lookback_days:          number;
 }
 
 interface LoadingStep {
   key:   string;
   label: string;
+  desc:  string;
   done:  boolean;
 }
 
@@ -72,9 +86,12 @@ const PERIOD_OPTIONS = [
 ] as const;
 
 const LOADING_STEPS: LoadingStep[] = [
-  { key: 'fetch',    label: 'Fetching News...',       done: false },
-  { key: 'sentiment',label: 'Analyzing Sentiment...', done: false },
-  { key: 'report',   label: 'Generating Report...',   done: false },
+  { key: 'fetch',    label: 'Fetch News',         desc: 'Scraping Google News RSS...', done: false },
+  { key: 'quality',  label: 'Data Quality Check', desc: 'Validasi jumlah artikel...', done: false },
+  { key: 'filter',   label: 'Filter Articles',    desc: 'Keyword + LLM relevance scoring...', done: false },
+  { key: 'sentiment',label: 'Analyze Sentiment',  desc: 'LLM analisis sentimen berita...', done: false },
+  { key: 'report',   label: 'Generate Report',    desc: 'Menyusun laporan analisis...', done: false },
+  { key: 'evaluate', label: 'Evaluate Output',    desc: 'Quality gate & self-healing check...', done: false },
 ];
 
 
@@ -310,10 +327,23 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
                   </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[11px] text-slate-500 space-y-1">
-                  <p className="font-semibold text-slate-700 flex items-center gap-1.5"><Zap className="w-3 h-3 text-primary" /> LangGraph Agent Flow</p>
-                  <p>📡 Fetch News → 🧠 Analyze Sentiment → 📝 Generate Report</p>
-                  <p className="text-slate-400">Estimasi waktu: 30–60 detik</p>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[11px] text-slate-500 space-y-2">
+                  <p className="font-semibold text-slate-700 flex items-center gap-1.5"><Zap className="w-3 h-3 text-primary" /> LangGraph Agent — 6 Node Pipeline</p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[
+                      { icon: '📡', label: 'Fetch News' },
+                      { icon: '🔍', label: 'Data Quality' },
+                      { icon: '🗂️', label: 'Filter Articles' },
+                      { icon: '🧠', label: 'Analyze Sentiment' },
+                      { icon: '📝', label: 'Generate Report' },
+                      { icon: '✅', label: 'Evaluate Output' },
+                    ].map((s, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-slate-500">
+                        <span>{s.icon}</span><span>{s.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-slate-400">Estimasi waktu: 45–90 detik · Self-healing loop aktif</p>
                 </div>
 
                 <button
@@ -355,42 +385,71 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
                 </div>
 
                 {/* Step indicators */}
-                <div className="w-full space-y-3">
+                <div className="w-full space-y-2">
                   {loadingSteps.map((step, idx) => {
                     const isActive = idx === currentStep && !step.done;
                     const isDone   = step.done;
+                    const isPending = !isDone && !isActive;
                     return (
                       <motion.div
                         key={step.key}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
+                        transition={{ delay: idx * 0.08 }}
                         className={cn(
-                          'flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all',
+                          'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all',
                           isDone
-                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            ? 'bg-emerald-50 border-emerald-200'
                             : isActive
-                              ? 'bg-primary/8 border-primary/20 text-primary'
-                              : 'bg-slate-50 border-slate-100 text-slate-400'
+                              ? 'bg-primary/8 border-primary/25 shadow-sm shadow-primary/10'
+                              : 'bg-slate-50/60 border-slate-100'
                         )}
                       >
-                        {isDone
-                          ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                          : isActive
-                            ? <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-                            : <Clock className="w-4 h-4 flex-shrink-0" />
-                        }
-                        <span>{step.label}</span>
-                        {isDone && <span className="ml-auto text-[10px] font-bold text-emerald-500">DONE</span>}
-                        {isActive && (
-                          <motion.span
-                            className="ml-auto text-[10px] font-bold text-primary"
-                            animate={{ opacity: [1, 0.4, 1] }}
-                            transition={{ duration: 1.2, repeat: Infinity }}
-                          >
-                            RUNNING
-                          </motion.span>
-                        )}
+                        {/* Node index badge */}
+                        <div className={cn(
+                          'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold',
+                          isDone    ? 'bg-emerald-500 text-white'
+                          : isActive ? 'bg-primary text-white'
+                          : 'bg-slate-200 text-slate-400'
+                        )}>
+                          {isDone ? <CheckCircle className="w-3 h-3" /> : idx + 1}
+                        </div>
+
+                        {/* Label + desc */}
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            'text-xs font-semibold leading-tight',
+                            isDone ? 'text-emerald-700' : isActive ? 'text-primary' : 'text-slate-400'
+                          )}>
+                            {step.label}
+                          </p>
+                          {(isActive || isDone) && (
+                            <p className={cn(
+                              'text-[10px] mt-0.5 truncate',
+                              isDone ? 'text-emerald-500' : 'text-primary/60'
+                            )}>
+                              {isDone ? '✓ Selesai' : step.desc}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Status badge */}
+                        <div className="flex-shrink-0">
+                          {isDone && <span className="text-[9px] font-bold text-emerald-500 bg-emerald-100 px-1.5 py-0.5 rounded">DONE</span>}
+                          {isActive && (
+                            <div className="flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                              <motion.span
+                                className="text-[9px] font-bold text-primary"
+                                animate={{ opacity: [1, 0.4, 1] }}
+                                transition={{ duration: 1.2, repeat: Infinity }}
+                              >
+                                RUN
+                              </motion.span>
+                            </div>
+                          )}
+                          {isPending && <Clock className="w-3 h-3 text-slate-300" />}
+                        </div>
                       </motion.div>
                     );
                   })}
@@ -438,7 +497,11 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
                     <div>
                       <p className={cn('text-lg font-bold', sc.text)}>{result.sentiment}</p>
                       <p className="text-[11px] text-slate-500 font-medium">
-                        {result.article_count} artikel · {result.lookback_days} hari
+                        {result.filtered_article_count ?? result.article_count} artikel relevan
+                        {result.filtered_article_count != null && result.filtered_article_count !== result.article_count && (
+                          <span className="text-slate-400"> (dari {result.article_count})</span>
+                        )}
+                        {' '}· {result.lookback_days} hari
                       </p>
                     </div>
                   </div>
@@ -449,6 +512,26 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
                     <p className="text-[10px] text-slate-400 font-medium">Sentiment Score</p>
                   </div>
                 </div>
+
+                {/* Evaluation Badge */}
+                {result.evaluation_result && (
+                  <div className={cn(
+                    'mx-5 mt-3 mb-0 px-3 py-2 rounded-xl border flex items-center gap-2 text-xs',
+                    result.evaluation_result.verdict === 'APPROVED'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-amber-50 border-amber-200 text-amber-700'
+                  )}>
+                    <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="font-semibold">Evaluasi LLM:</span>
+                    <span>Skor {result.evaluation_result.quality_score}/100</span>
+                    <span className="ml-auto font-bold text-[10px]">
+                      {result.evaluation_result.forced_approve ? 'MAX RETRY' : result.evaluation_result.verdict}
+                    </span>
+                    {result.retry_count > 0 && (
+                      <span className="text-[10px] text-slate-400">· {result.retry_count}x retry</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Confidence + Score Bar */}
                 <div className="px-5 py-4 space-y-3">

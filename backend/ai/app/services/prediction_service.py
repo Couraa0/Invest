@@ -236,10 +236,8 @@ def fetch_stock_data(ticker: str, start: str, end: str) -> pd.DataFrame:
 
     required = ["Open", "High", "Low", "Close", "Volume"]
     df = df[required].copy()
-    
-    # Filter out rows with zero volume (holidays / non-trading days / weekends)
-    if "Volume" in df.columns:
-        df = df[df["Volume"] > 0]
+    # Hapus filter Volume > 0 agar saham tersuspensi (SRIL, WIKA, dll) tetap masuk
+    # karena YFinance memberikan Volume=0 untuk saham yang tidak ditransaksikan
 
     df.dropna(inplace=True)
     return df
@@ -544,9 +542,7 @@ def get_chart_data(ticker: str, period: str = "1M") -> list[dict]:
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
-    # Filter out rows with zero volume
-    if "Volume" in df.columns:
-        df = df[df["Volume"] > 0]
+    # Hapus filter Volume > 0 agar chart untuk saham tersuspensi tetap muncul
 
     df = df[["Open", "High", "Low", "Close", "Volume"]].dropna()
 
