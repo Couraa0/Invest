@@ -203,14 +203,16 @@ export default function Signals() {
 
   // ── Fetch satu kategori (lazy) — stable ref via loadedRef ──────────────
 
-  const fetchCategory = useCallback(async (category: string) => {
-    if (loadedRef.current.has(category)) return; // already fetched
-    loadedRef.current.add(category); // mark as in-flight immediately
+  const fetchCategory = useCallback(async (category: string, isBackground = false) => {
+    if (!isBackground && loadedRef.current.has(category)) return; // already fetched
+    if (!isBackground) loadedRef.current.add(category); // mark as in-flight immediately
 
-    setCategoryStates(prev => ({
-      ...prev,
-      [category]: { data: [], loading: true, error: null, loaded: false },
-    }));
+    if (!isBackground) {
+      setCategoryStates(prev => ({
+        ...prev,
+        [category]: { data: prev[category]?.data ?? [], loading: true, error: null, loaded: false },
+      }));
+    }
 
     try {
       const encoded = encodeURIComponent(category);
@@ -223,13 +225,16 @@ export default function Signals() {
         [category]: { data: stocks, loading: false, error: null, loaded: true },
       }));
       setLastUpdated(new Date());
+      loadedRef.current.add(category);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      loadedRef.current.delete(category); // allow retry on error
-      setCategoryStates(prev => ({
-        ...prev,
-        [category]: { data: [], loading: false, error: msg, loaded: false },
-      }));
+      if (!isBackground) {
+        loadedRef.current.delete(category); // allow retry on error
+        setCategoryStates(prev => ({
+          ...prev,
+          [category]: { data: prev[category]?.data ?? [], loading: false, error: msg, loaded: false },
+        }));
+      }
     }
   }, []); // stable — no deps needed, uses ref
 
@@ -254,6 +259,27 @@ export default function Signals() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, loadingCategories, categories.length]);
+
+  // ── Background Auto-Refresh ───────────
+  useEffect(() => {
+    if (loadingCategories || categories.length === 0) return;
+    
+    const interval = setInterval(() => {
+      if (activeCategory !== 'Semua') {
+        fetchCategory(activeCategory, true);
+      } else {
+        // Sequential background fetch
+        const fetchAll = async () => {
+          for (const cat of categories) {
+            await fetchCategory(cat, true);
+          }
+        };
+        fetchAll();
+      }
+    }, 15_000); // 15 seconds auto-refresh
+
+    return () => clearInterval(interval);
+  }, [activeCategory, loadingCategories, categories, fetchCategory]);
 
   // ── Data yang ditampilkan ─────────────────────────────────────────────────
 
