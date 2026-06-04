@@ -297,6 +297,26 @@ async def get_market():
     return {"status": "success", "data": data, "cached": False}
 
 
+@router.get("/market/insight", summary="Insight Pasar AI Real-time")
+async def get_market_insight():
+    """
+    Menghasilkan ringkasan singkat dari AI (LLM) mengenai kondisi IHSG
+    dan saham blue-chip saat ini.
+    """
+    cached = _cache_get("market_insight")
+    if cached:
+        return {"status": "success", "insight": cached, "cached": True}
+
+    from ..services.prediction_service import get_market_overview
+    overview = get_market_overview()
+    
+    from ..services.mentor_service import generate_market_insight
+    insight = await generate_market_insight(overview)
+    
+    _cache_set("market_insight", insight)
+    return {"status": "success", "insight": insight, "cached": False}
+
+
 @router.get("/market/ihsg", summary="Chart IHSG dengan periode")
 async def get_ihsg_chart(
     period: str = Query(default="1M", description="Period: 1D, 1W, 1M, 3M, 1Y, 5Y")

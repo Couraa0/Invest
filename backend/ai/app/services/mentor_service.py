@@ -159,3 +159,45 @@ async def chat_with_mentor(messages: List[Dict[str, str]]) -> Dict[str, Any]:
             "role": "assistant",
             "content": "❌ **Koneksi Error**: Gagal menghubungi server Groq AI. Periksa koneksi internet server backend Anda."
         }
+
+async def generate_market_insight(market_data: dict) -> str:
+    """
+    Menghasilkan ringkasan insight pasar secara live menggunakan Groq (LLM).
+    """
+    api_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
+    if not api_key or api_key == "YOUR_GROQ_API_KEY" or api_key.startswith("your_"):
+        return "Insight dinamis belum tersedia karena Groq API Key belum dikonfigurasi."
+
+    prompt = (
+        "Anda adalah asisten analis pasar saham. "
+        f"Saat ini IHSG berada di level {market_data.get('ihsg', 0):,} ({market_data.get('change_pct', 0)}%). "
+        f"Status pasar menurut model XGBoost kami adalah {market_data.get('status', 'N/A')}, "
+        f"dengan persentase sinyal bullish dari blue-chip sebesar {market_data.get('bullish_percent', 50)}%. "
+        "Tolong buat satu paragraf singkat (2-3 kalimat) dalam bahasa Indonesia, "
+        "yang merangkum insight dan memberikan pandangan logis tentang pasar saat ini. "
+        "Hindari salam pembuka, dan jangan berikan saran trading eksplisit, cukup baca pasarnya secara profesional."
+    )
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.5,
+        "max_tokens": 150
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                res_data = response.json()
+                return res_data["choices"][0]["message"]["content"].strip()
+            else:
+                return "Gagal menghasilkan AI Insight karena masalah pada server Groq."
+    except Exception as e:
+        logger.error(f"Gagal generate insight pasar: {e}")
+        return "AI sedang memproses data pasar..."

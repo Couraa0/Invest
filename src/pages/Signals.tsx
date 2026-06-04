@@ -139,17 +139,15 @@ interface CategoryState {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Signals() {
-  const [view, setView] = useState<'list' | 'analysis'>('list');
+  const [view, setView] = useState<'list' | 'analysis' | 'news' | 'recommendation'>('list');
   const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showRecommendation, setShowRecommendation] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('Semua');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // News Analysis Modal state
   const [newsStock, setNewsStock] = useState<StockForNews | null>(null);
-  const [showNewsModal, setShowNewsModal] = useState(false);
 
   // Kategori dari API
   const [categories, setCategories] = useState<string[]>([]);
@@ -171,7 +169,7 @@ export default function Signals() {
   // Handler buka News Modal
   const openNewsModal = (stock: StockData) => {
     setNewsStock({ ticker: stock.ticker, symbol: stock.symbol, name: stock.name });
-    setShowNewsModal(true);
+    setView('news');
   };
 
   // ── Fetch daftar kategori saat mount ─────────────────────────────────────
@@ -301,6 +299,7 @@ export default function Signals() {
   })();
 
   const isCurrentLoading = (() => {
+    if (loadingCategories) return true;
     if (activeCategory === 'Semua') {
       return categories.some(cat => categoryStates[cat]?.loading);
     }
@@ -401,7 +400,7 @@ export default function Signals() {
   return (
     <div className="space-y-5 overflow-x-hidden w-full">
       <AnimatePresence mode="wait">
-        {view === 'list' ? (
+        {view === 'list' && (
           <motion.div key="list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-5">
 
             {/* ── Header ── */}
@@ -548,7 +547,7 @@ export default function Signals() {
             {/* ── Stock Grid ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(isCurrentLoading && displayed.length === 0)
-                ? Array.from({ length: 6 }).map((_, i) => <StockSkeleton key={i} />)
+                ? Array.from({ length: 9 }).map((_, i) => <StockSkeleton key={i} />)
                 : displayed.map((stock, i) => (
                   <motion.div
                     key={stock.ticker}
@@ -659,10 +658,11 @@ export default function Signals() {
             )}
 
           </motion.div>
+        )}
 
-        ) : (
-          // ─── Analysis View ────────────────────────────────────────────────────
-          <motion.div key="analysis" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+        {/* ─── Analysis View ──────────────────────────────────────────────────── */}
+        {view === 'analysis' && (
+          <motion.div key="analysis" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-5">
 
             {/* Analysis Header */}
             <div className="flex items-center justify-between">
@@ -904,102 +904,100 @@ export default function Signals() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setShowRecommendation(true)}
+                    onClick={() => setView('recommendation')}
                     className="w-full sm:w-auto bg-secondary text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-secondary/90 active:scale-[0.98] transition-all shadow-lg shadow-secondary/20 shrink-0 relative z-10"
                   >
                     <Sparkles className="w-4 h-4" /> Tanya AI Mentor
                   </button>
                 </div>
-
-                {/* Recommendation Modal */}
-                <AnimatePresence>
-                  {showRecommendation && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/20 backdrop-blur-sm">
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 16 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 16 }}
-                        transition={{ duration: 0.2 }}
-                        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 p-7 relative"
-                      >
-                        <button
-                          onClick={() => setShowRecommendation(false)}
-                          className="absolute top-5 right-5 p-1.5 text-on-surface-variant/40 hover:text-primary hover:bg-slate-100 rounded-lg transition-all"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-
-                        <div className="flex items-center gap-3 mb-5">
-                          <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-secondary/20">
-                            <Sparkles className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h2 className="text-lg font-bold text-primary">Rekomendasi Final AI</h2>
-                            <p className="text-xs text-on-surface-variant/50 font-medium">XGBoost Engine · {selectedStock.category}</p>
-                          </div>
-                        </div>
-
-                        <div className={cn(
-                          "rounded-2xl p-5 mb-5 border",
-                          selectedStock.signal === 'BULLISH' ? "bg-secondary/6 border-secondary/10" : "bg-error/6 border-error/10"
-                        )}>
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="stat-label">Keputusan InvestAI</span>
-                            <span className={cn(
-                              "px-3 py-1 text-white rounded-lg text-xs font-bold shadow-sm",
-                              selectedStock.signal === 'BULLISH' ? "bg-secondary" : "bg-error"
-                            )}>
-                              {selectedStock.action}
-                            </span>
-                          </div>
-                          <p className="text-sm text-primary/75 leading-relaxed">
-                            Berdasarkan analisis XGBoost real-time ({selectedStock.confidence.toFixed(0)}% confidence),
-                            kami merekomendasikan aksi <strong>{selectedStock.action}</strong> pada {selectedStock.symbol}{' '}
-                            di harga saat ini (Rp {formatPrice(selectedStock.harga)}).
-                          </p>
-                        </div>
-
-                        <div className="space-y-3 mb-6">
-                          {[
-                            `Take Profit target: Rp ${formatPrice(selectedStock.take_profit)} (+3%)`,
-                            `Stop Loss di: Rp ${formatPrice(selectedStock.stop_loss)} (${selectedStock.action === 'BUY' ? '-2%' : '+2%'})`,
-                            `RSI ${selectedStock.rsi.toFixed(1)} — ${selectedStock.rsi_status}. MACD ${selectedStock.macd_status}.`,
-                          ].map((item, i) => (
-                            <div key={i} className="flex items-start gap-2.5">
-                              <CheckCircle2 className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
-                              <p className="text-sm text-primary/70">{item}</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        <button
-                          onClick={() => setShowRecommendation(false)}
-                          className="btn-primary w-full justify-center"
-                        >
-                          Gunakan Rekomendasi Ini
-                        </button>
-                        <p className="text-center mt-4 stat-label">⚠ Investasi memiliki risiko. Gunakan AI sebagai referensi riset mandiri Anda.</p>
-                      </motion.div>
-                    </div>
-                  )}
-                </AnimatePresence>
               </>
             )}
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* ── News Analysis Modal ── */}
-      {showNewsModal && (
-        <NewsAnalysisModal
-          stock={newsStock}
-          apiBase={API_BASE}
-          onClose={() => {
-            setShowNewsModal(false);
-            setNewsStock(null);
-          }}
-        />
-      )}
+        {/* ─── Recommendation View ──────────────────────────────────────────────────── */}
+        {view === 'recommendation' && selectedStock && (
+          <motion.div key="recommendation" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-5">
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setView('analysis')}
+                className="p-2 bg-white border border-slate-200 rounded-xl text-on-surface-variant hover:text-primary hover:border-primary/20 transition-all shadow-sm"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <h1 className="text-base font-bold text-primary">Rekomendasi Final AI</h1>
+                <p className="text-xs text-on-surface-variant/50">XGBoost Engine · {selectedStock.category}</p>
+              </div>
+            </div>
+
+            <div className="bg-white w-full rounded-3xl shadow-sm border border-slate-100 p-7">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-secondary/20">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-primary">Keputusan untuk {selectedStock.symbol}</h2>
+                  <p className="text-xs text-on-surface-variant/50 font-medium">Berdasarkan data real-time</p>
+                </div>
+              </div>
+
+              <div className={cn(
+                "rounded-2xl p-5 mb-5 border",
+                selectedStock.signal === 'BULLISH' ? "bg-secondary/6 border-secondary/10" : "bg-error/6 border-error/10"
+              )}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="stat-label">Keputusan InvestAI</span>
+                  <span className={cn(
+                    "px-3 py-1 text-white rounded-lg text-xs font-bold shadow-sm",
+                    selectedStock.signal === 'BULLISH' ? "bg-secondary" : "bg-error"
+                  )}>
+                    {selectedStock.action}
+                  </span>
+                </div>
+                <p className="text-sm text-primary/75 leading-relaxed">
+                  Berdasarkan analisis XGBoost real-time ({selectedStock.confidence.toFixed(0)}% confidence),
+                  kami merekomendasikan aksi <strong>{selectedStock.action}</strong> pada {selectedStock.symbol}{' '}
+                  di harga saat ini (Rp {formatPrice(selectedStock.harga)}).
+                </p>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                {[
+                  `Take Profit target: Rp ${formatPrice(selectedStock.take_profit)} (+3%)`,
+                  `Stop Loss di: Rp ${formatPrice(selectedStock.stop_loss)} (${selectedStock.action === 'BUY' ? '-2%' : '+2%'})`,
+                  `RSI ${selectedStock.rsi.toFixed(1)} — ${selectedStock.rsi_status}. MACD ${selectedStock.macd_status}.`,
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                    <p className="text-sm text-primary/70">{item}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setView('analysis')}
+                className="btn-primary w-full justify-center"
+              >
+                Kembali ke Analisis
+              </button>
+              <p className="text-center mt-4 stat-label">⚠ Investasi memiliki risiko. Gunakan AI sebagai referensi riset mandiri Anda.</p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── News Analysis View ──────────────────────────────────────────────────── */}
+        {view === 'news' && newsStock && (
+          <motion.div key="news" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>
+            <NewsAnalysisModal
+              stock={newsStock}
+              apiBase={API_BASE}
+              onClose={() => setView('analysis')}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

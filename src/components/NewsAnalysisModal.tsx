@@ -232,28 +232,14 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
   const sc = result ? sentimentColor(result.sentiment) : null;
 
   return (
-    <AnimatePresence>
-      {/* Backdrop */}
-      <motion.div
-        key="backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-      />
-
-      {/* Drawer / Modal */}
-      <motion.div
-        key="drawer"
-        initial={{ opacity: 0, x: "-50%", y: "-40%", scale: 0.97 }}
-        animate={{ opacity: 1, x: "-50%", y: "-50%", scale: 1 }}
-        exit={{ opacity: 0, x: "-50%", y: "-40%", scale: 0.97 }}
-        transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-        onClick={e => e.stopPropagation()}
-        className="fixed top-1/2 left-1/2 z-50 w-[92%] sm:w-[640px] md:w-[768px] lg:w-[850px] bg-white rounded-2xl shadow-2xl shadow-black/20 border border-slate-100 overflow-hidden flex flex-col max-h-[calc(100vh-160px)] sm:max-h-[90vh]"
-      >
-        {/* ── Header ── */}
+    <motion.div
+      key="news_view"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="w-full bg-white rounded-2xl border border-slate-100 flex flex-col min-h-[500px] shadow-sm overflow-hidden"
+    >
+      {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -267,9 +253,9 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
           <button
             id="news-modal-close"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-100 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
           >
-            <X className="w-4 h-4" />
+            Kembali
           </button>
         </div>
 
@@ -427,190 +413,197 @@ export default function NewsAnalysisModal({ stock, onClose, apiBase }: Props) {
               <motion.div
                 key="result"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="divide-y divide-slate-100"
+                className="p-5 flex flex-col gap-5"
               >
-                {/* Sentiment Overview */}
-                <div className={cn('p-5 flex items-center justify-between gap-4', sc.bg)}>
-                  <div className="flex items-center gap-3">
-                    <div className={cn('w-11 h-11 rounded-xl border flex items-center justify-center', sc.bg, sc.border)}>
-                      <SentimentIcon s={result.sentiment} />
+                {/* Header Grid: Sentiment & Confidence */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Sentiment Overview */}
+                  <div className={cn('p-4 rounded-xl flex items-center justify-between gap-4 border', sc.bg, sc.border)}>
+                    <div className="flex items-center gap-3">
+                      <div className={cn('w-10 h-10 rounded-xl bg-white border flex items-center justify-center', sc.border)}>
+                        <SentimentIcon s={result.sentiment} />
+                      </div>
+                      <div>
+                        <p className={cn('text-base font-bold', sc.text)}>{result.sentiment}</p>
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                          {result.article_count} artikel · {result.lookback_days} hari
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className={cn('text-lg font-bold', sc.text)}>{result.sentiment}</p>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        {result.article_count} artikel · {result.lookback_days} hari
+                    <div className="text-right">
+                      <p className={cn('text-2xl font-bold tabular-nums leading-none', sc.text)}>
+                        {result.sentiment_score > 0 ? '+' : ''}{result.sentiment_score}
                       </p>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Score</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={cn('text-3xl font-bold tabular-nums', sc.text)}>
-                      {result.sentiment_score > 0 ? '+' : ''}{result.sentiment_score}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-medium">Sentiment Score</p>
+
+                  {/* Confidence + Score Bar */}
+                  <div className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex flex-col justify-center">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Confidence</p>
+                      <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold border', confidenceColor(result.confidence))}>
+                        {result.confidence}
+                      </span>
+                    </div>
+                    <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden mb-1.5">
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-400" />
+                      <motion.div
+                        className={cn('absolute top-0 h-full rounded-full', result.sentiment_score >= 0 ? 'bg-emerald-500' : 'bg-red-500')}
+                        style={{ left: result.sentiment_score >= 0 ? '50%' : `${50 + result.sentiment_score / 2}%` }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.abs(result.sentiment_score) / 2}%` }}
+                        transition={{ duration: 1, ease: 'easeOut' }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[8px] text-slate-400 font-bold uppercase tracking-wider">
+                      <span>Bearish</span>
+                      <span>Netral</span>
+                      <span>Bullish</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Confidence + Score Bar */}
-                <div className="px-5 py-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-slate-500">Confidence Level</p>
-                    <span className={cn('px-2.5 py-1 rounded-lg text-[10px] font-bold border', confidenceColor(result.confidence))}>
-                      {result.confidence}
-                    </span>
+                {/* Main Content Grid: Report vs Catalysts/Risks */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                  {/* Left Column: Summary */}
+                  <div className="lg:col-span-7 flex flex-col gap-3">
+                    {result.final_report && (
+                      <div className="flex-1 min-h-0 flex flex-col">
+                        <p className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+                          <Newspaper className="w-4 h-4 text-primary" /> Ringkasan Analisis
+                        </p>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex-1 overflow-y-auto max-h-[320px] custom-scrollbar">
+                          <MarkdownReport text={result.final_report} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {/* Score bar */}
-                  <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                    {/* Center line */}
-                    <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-300" />
-                    <motion.div
-                      className={cn('absolute top-0 h-full rounded-full', result.sentiment_score >= 0 ? 'bg-emerald-500' : 'bg-red-500')}
-                      style={{ left: result.sentiment_score >= 0 ? '50%' : `${50 + result.sentiment_score / 2}%` }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.abs(result.sentiment_score) / 2}%` }}
-                      transition={{ duration: 1, ease: 'easeOut' }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[9px] text-slate-400 font-medium">
-                    <span>-100 BEARISH</span>
-                    <span>NETRAL</span>
-                    <span>BULLISH +100</span>
+
+                  {/* Right Column: Key Topics, Catalysts, Risks */}
+                  <div className="lg:col-span-5 flex flex-col gap-4">
+                    {/* Key Topics */}
+                    {result.key_topics.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-primary" /> Topik Utama
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {result.key_topics.map((t, i) => (
+                            <span key={i} className="px-2.5 py-1 bg-primary/8 border border-primary/15 text-primary rounded-lg text-xs font-semibold">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Catalysts & Risks in 2 columns on sm/md, stacked on lg */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                      {/* Catalysts */}
+                      {result.catalysts.length > 0 && (
+                        <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3">
+                          <p className="text-xs font-bold text-emerald-700 mb-2 flex items-center gap-1.5">
+                            <Lightbulb className="w-3.5 h-3.5 text-emerald-500" /> Katalis Positif
+                          </p>
+                          <ul className="space-y-1.5">
+                            {result.catalysts.map((c, i) => (
+                              <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
+                                <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                                <span className="leading-snug">{c}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Risk Factors */}
+                      {result.risk_factors.length > 0 && (
+                        <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-3">
+                          <p className="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Faktor Risiko
+                          </p>
+                          <ul className="space-y-1.5">
+                            {result.risk_factors.map((r, i) => (
+                              <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
+                                <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                                <span className="leading-snug">{r}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Key Topics */}
-                {result.key_topics.length > 0 && (
-                  <div className="px-5 py-4">
-                    <p className="text-xs font-bold text-slate-700 mb-2.5 flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5 text-primary" /> Topik Utama
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {result.key_topics.map((t, i) => (
-                        <span key={i} className="px-2.5 py-1 bg-primary/8 border border-primary/15 text-primary rounded-lg text-xs font-semibold">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Catalysts */}
-                {result.catalysts.length > 0 && (
-                  <div className="px-5 py-4">
-                    <p className="text-xs font-bold text-slate-700 mb-2.5 flex items-center gap-1.5">
-                      <Lightbulb className="w-3.5 h-3.5 text-emerald-500" /> Katalis Positif
-                    </p>
-                    <ul className="space-y-1.5">
-                      {result.catalysts.map((c, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
-                          <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                          {c}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Risk Factors */}
-                {result.risk_factors.length > 0 && (
-                  <div className="px-5 py-4">
-                    <p className="text-xs font-bold text-slate-700 mb-2.5 flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Faktor Risiko
-                    </p>
-                    <ul className="space-y-1.5">
-                      {result.risk_factors.map((r, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
-                          <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                          {r}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Final Report */}
-                {result.final_report && (
-                  <div className="px-5 py-4">
-                    <p className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1.5">
-                      <Newspaper className="w-3.5 h-3.5 text-primary" /> Ringkasan Analisis
-                    </p>
-                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 max-h-64 overflow-y-auto">
-                      <MarkdownReport text={result.final_report} />
-                    </div>
-                  </div>
-                )}
-
-                {/* Articles */}
-                {result.articles.length > 0 && (
-                  <div className="px-5 py-4">
+                {/* Footer: Articles & Action */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100">
+                  {result.articles.length > 0 && (
                     <button
                       id="news-toggle-articles"
                       onClick={() => setShowArticles(v => !v)}
-                      className="w-full flex items-center justify-between text-xs font-bold text-slate-700 group"
+                      className="w-full sm:w-auto flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:border-primary/30 hover:bg-primary/5 hover:text-primary transition-all flex items-center justify-between sm:justify-center gap-2 group"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <ExternalLink className="w-3.5 h-3.5 text-primary" />
-                        Daftar Berita ({result.articles.length})
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-primary transition-colors" />
+                        Referensi Berita ({result.articles.length})
+                      </div>
                       {showArticles
-                        ? <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
-                        : <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
+                        ? <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors sm:hidden" />
+                        : <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors sm:hidden" />
                       }
                     </button>
-
-                    <AnimatePresence>
-                      {showArticles && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden mt-3 space-y-2"
-                        >
-                          {result.articles.map((a, i) => (
-                            <a
-                              key={i}
-                              href={a.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-primary/20 hover:bg-primary/3 transition-all group"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs font-semibold text-slate-800 group-hover:text-primary transition-colors leading-snug line-clamp-2">
-                                  {a.title}
-                                </p>
-                                <ExternalLink className="w-3 h-3 text-slate-300 group-hover:text-primary flex-shrink-0 mt-0.5 transition-colors" />
-                              </div>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-[10px] text-slate-400 font-medium">{a.source}</span>
-                                <span className="text-[10px] text-slate-300">·</span>
-                                <span className="text-[10px] text-slate-400">{a.date}</span>
-                              </div>
-                              {a.summary && (
-                                <p className="text-[11px] text-slate-500 mt-1.5 line-clamp-2 leading-snug">{a.summary}</p>
-                              )}
-                            </a>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
-                {/* Analyze Again */}
-                <div className="px-5 py-4">
+                  )}
+                  
                   <button
                     id="news-analyze-again-btn"
                     onClick={() => setPhase('picker')}
-                    className="w-full py-2.5 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:border-primary/30 hover:text-primary transition-colors"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/90 transition-colors shadow-sm shadow-primary/20 flex-shrink-0"
                   >
                     Analisis Ulang
                   </button>
                 </div>
+
+                <AnimatePresence>
+                  {showArticles && result.articles.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {result.articles.map((a, i) => (
+                          <a
+                            key={i}
+                            href={a.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-3 bg-white border border-slate-100 shadow-sm rounded-xl hover:border-primary/30 hover:shadow-md transition-all group h-full flex flex-col"
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <p className="text-[11px] font-bold text-slate-800 group-hover:text-primary transition-colors leading-snug line-clamp-3">
+                                {a.title}
+                              </p>
+                              <ExternalLink className="w-3 h-3 text-slate-300 group-hover:text-primary flex-shrink-0 mt-0.5 transition-colors" />
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-auto pt-2 border-t border-slate-50">
+                              <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider">{a.source}</span>
+                              <span className="text-[10px] text-slate-300">·</span>
+                              <span className="text-[10px] text-slate-400">{a.date}</span>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </motion.div>
-    </AnimatePresence>
   );
 }

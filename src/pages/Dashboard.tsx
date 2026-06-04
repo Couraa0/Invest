@@ -103,6 +103,7 @@ export default function Dashboard() {
   const [market, setMarket]         = useState<MarketData | null>(null);
   const [loadingStocks, setLoadingStocks] = useState(true);
   const [loadingMarket, setLoadingMarket] = useState(true);
+  const [aiInsight, setAiInsight]         = useState<string | null>(null);
   const [lastUpdated, setLastUpdated]     = useState<Date | null>(null);
   const [marketStatus, setMarketStatus]   = useState({ isOpen: false, text: 'Checking...' });
 
@@ -154,9 +155,22 @@ export default function Dashboard() {
     }
   };
 
+  const fetchInsight = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/market/insight`);
+      if (res.ok) {
+        const json = await res.json();
+        setAiInsight(json.insight);
+      }
+    } catch {
+      // Biarkan null jika error (akan menampilkan fallback)
+    }
+  };
+
   useEffect(() => {
     fetchStocks();
     fetchMarket();
+    fetchInsight();
   }, []);
 
   // ── Real-time Market Status ───────────────────────────────────────────────
@@ -241,7 +255,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { fetchStocks(); fetchMarket(); }}
+            onClick={() => { fetchStocks(); fetchMarket(); fetchInsight(); }}
             disabled={loadingStocks}
             className="p-2 bg-white border border-slate-200 rounded-xl text-on-surface-variant hover:text-primary transition-all shadow-sm disabled:opacity-50"
             title="Refresh data"
@@ -290,17 +304,20 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row gap-6">
             <div className="md:w-2/3 space-y-3">
               <p className="text-base text-on-surface leading-relaxed">
-                {market?.status !== 'N/A'
-                  ? `Pasar IDX terpantau ${market?.status === 'Bullish' ? 'menguat' : 'melemah'} dengan IHSG di ${market?.ihsg.toLocaleString('id-ID')}.`
-                  : 'IHSG terpantau bergerak dinamis seiring sentimen global.'
-                }
-                {' '}Untuk profil <span className="font-semibold text-secondary">{currentProfile.risk}</span> Anda,
-                XGBoost AI kini memantau <span className="font-semibold text-primary">90+ saham IDX</span> secara real-time.
+                {aiInsight ? (
+                  aiInsight
+                ) : (
+                  market?.status !== 'N/A'
+                    ? `AI sedang memproses data pasar... IHSG terpantau di ${market?.ihsg.toLocaleString('id-ID')}.`
+                    : 'IHSG terpantau bergerak dinamis seiring sentimen global.'
+                )}
               </p>
               <p className="text-sm text-on-surface-variant/60 leading-relaxed">
+                Untuk profil <span className="font-semibold text-secondary">{currentProfile.risk}</span> Anda,
+                {' '}
                 {watchlist.length > 0
-                  ? `XGBoost AI mendeteksi ${watchlist.filter(s => s.signal === 'BULLISH').length} sinyal BULLISH dari ${watchlist.length} saham watchlist Anda.`
-                  : 'XGBoost AI sedang memproses data pasar untuk 90+ saham IDX...'
+                  ? `XGBoost AI saat ini memantau ${watchlist.length} saham watchlist Anda dan mendeteksi ${watchlist.filter(s => s.signal === 'BULLISH').length} sinyal BULLISH.`
+                  : 'XGBoost AI sedang menganalisis 90+ saham IDX secara real-time.'
                 }
               </p>
               <Link
