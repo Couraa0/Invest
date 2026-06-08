@@ -30,7 +30,7 @@ export default function Register() {
     const result = await registerUser(email, password, fullName);
     
     if (result.success) {
-      navigate('/onboarding');
+      navigate('/dashboard');
     } else {
       setError(result.message);
     }
@@ -42,7 +42,7 @@ export default function Register() {
       setIsLoading(true);
       const result = await loginWithGoogle(credentialResponse.credential);
       if (result.success) {
-        navigate('/onboarding');
+        navigate('/dashboard');
       } else {
         setError(result.message);
       }

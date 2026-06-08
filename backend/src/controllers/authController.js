@@ -33,7 +33,7 @@ const register = async (req, res) => {
       .input('full_name', sql.VarChar, full_name)
       .query(`
         INSERT INTO Users (email, password_hash, full_name)
-        OUTPUT INSERTED.id, INSERTED.email, INSERTED.full_name, INSERTED.risk_profile, INSERTED.membership_level, INSERTED.created_at
+        OUTPUT INSERTED.id, INSERTED.email, INSERTED.full_name, INSERTED.risk_profile, INSERTED.membership_level, INSERTED.has_completed_onboarding, INSERTED.created_at
         VALUES (@email, @password_hash, @full_name)
       `);
 
@@ -91,7 +91,7 @@ const getMe = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, req.userId)
-      .query('SELECT id, email, full_name, risk_profile, membership_level, created_at FROM Users WHERE id = @id');
+      .query('SELECT id, email, full_name, risk_profile, membership_level, avatar_url, has_completed_onboarding, created_at FROM Users WHERE id = @id');
     if (!result.recordset.length) return res.status(404).json({ error: 'User tidak ditemukan' });
     res.json(result.recordset[0]);
   } catch (err) {

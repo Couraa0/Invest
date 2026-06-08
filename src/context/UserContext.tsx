@@ -14,8 +14,8 @@ interface UserContextType {
   register: (email: string, password: string, fullName: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   hasCompletedOnboarding: boolean;
-  completeOnboarding: (level: InvestorLevel) => void;
-  updateProfile: (payload: Partial<{ full_name: string; risk_profile: string; avatar_url: string }>) => Promise<{ success: boolean; message: string }>;
+  completeOnboarding: (level: InvestorLevel) => Promise<void> | void;
+  updateProfile: (payload: Partial<{ full_name: string; risk_profile: string; avatar_url: string; has_completed_onboarding: boolean }>) => Promise<{ success: boolean; message: string }>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -50,6 +50,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
         localStorage.setItem('investai_user', JSON.stringify(userData));
         localStorage.setItem('investai_user_id', userData.id);
+        if (userData.has_completed_onboarding) {
+          setHasCompletedOnboarding(true);
+          localStorage.setItem('hasCompletedOnboarding', 'true');
+        } else {
+          setHasCompletedOnboarding(false);
+          localStorage.removeItem('hasCompletedOnboarding');
+        }
+        if (userData.risk_profile) {
+          let lvl: InvestorLevel = 'Pemula';
+          if (userData.risk_profile === 'Agresif') lvl = 'Berpengalaman';
+          else if (userData.risk_profile === 'Moderat') lvl = 'Menengah';
+          else if (userData.risk_profile === 'Konservatif') lvl = 'Pemula';
+          setInvestorLevelState(lvl);
+          localStorage.setItem('investorLevel', lvl);
+        }
       })
       .catch(() => {
         // Token invalid
@@ -75,6 +90,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(true);
       localStorage.setItem('investai_user', JSON.stringify(res.user));
       localStorage.setItem('investai_user_id', res.user.id);
+      if (res.user.has_completed_onboarding) {
+        setHasCompletedOnboarding(true);
+        localStorage.setItem('hasCompletedOnboarding', 'true');
+      } else {
+        setHasCompletedOnboarding(false);
+        localStorage.removeItem('hasCompletedOnboarding');
+      }
+      if (res.user.risk_profile) {
+        let lvl: InvestorLevel = 'Pemula';
+        if (res.user.risk_profile === 'Agresif') lvl = 'Berpengalaman';
+        else if (res.user.risk_profile === 'Moderat') lvl = 'Menengah';
+        else if (res.user.risk_profile === 'Konservatif') lvl = 'Pemula';
+        setInvestorLevelState(lvl);
+        localStorage.setItem('investorLevel', lvl);
+      }
       return { success: true, message: 'Login berhasil!' };
     } catch (err: any) {
       return { success: false, message: err.message || 'Login gagal' };
@@ -89,6 +119,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(true);
       localStorage.setItem('investai_user', JSON.stringify(res.user));
       localStorage.setItem('investai_user_id', res.user.id);
+      if (res.user.has_completed_onboarding) {
+        setHasCompletedOnboarding(true);
+        localStorage.setItem('hasCompletedOnboarding', 'true');
+      } else {
+        setHasCompletedOnboarding(false);
+        localStorage.removeItem('hasCompletedOnboarding');
+      }
+      if (res.user.risk_profile) {
+        let lvl: InvestorLevel = 'Pemula';
+        if (res.user.risk_profile === 'Agresif') lvl = 'Berpengalaman';
+        else if (res.user.risk_profile === 'Moderat') lvl = 'Menengah';
+        else if (res.user.risk_profile === 'Konservatif') lvl = 'Pemula';
+        setInvestorLevelState(lvl);
+        localStorage.setItem('investorLevel', lvl);
+      }
       return { success: true, message: 'Login Google berhasil!' };
     } catch (err: any) {
       return { success: false, message: err.message || 'Login Google gagal' };
@@ -103,6 +148,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAuthenticated(true);
       localStorage.setItem('investai_user', JSON.stringify(res.user));
       localStorage.setItem('investai_user_id', res.user.id);
+      if (res.user.has_completed_onboarding) {
+        setHasCompletedOnboarding(true);
+        localStorage.setItem('hasCompletedOnboarding', 'true');
+      } else {
+        setHasCompletedOnboarding(false);
+        localStorage.removeItem('hasCompletedOnboarding');
+      }
+      if (res.user.risk_profile) {
+        let lvl: InvestorLevel = 'Pemula';
+        if (res.user.risk_profile === 'Agresif') lvl = 'Berpengalaman';
+        else if (res.user.risk_profile === 'Moderat') lvl = 'Menengah';
+        else if (res.user.risk_profile === 'Konservatif') lvl = 'Pemula';
+        setInvestorLevelState(lvl);
+        localStorage.setItem('investorLevel', lvl);
+      }
       return { success: true, message: 'Registrasi berhasil!' };
     } catch (err: any) {
       return { success: false, message: err.message || 'Registrasi gagal' };
@@ -149,18 +209,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [isAuthenticated, logout]);
 
-  const completeOnboarding = (level: InvestorLevel) => {
+  const completeOnboarding = async (level: InvestorLevel) => {
     setInvestorLevel(level);
     setHasCompletedOnboarding(true);
     localStorage.setItem('hasCompletedOnboarding', 'true');
+
+    let risk_profile = 'Moderat';
+    if (level === 'Pemula') risk_profile = 'Konservatif';
+    else if (level === 'Menengah') risk_profile = 'Moderat';
+    else if (level === 'Berpengalaman') risk_profile = 'Agresif';
+
+    await updateProfile({ risk_profile, has_completed_onboarding: true });
   };
 
-  const updateProfile = useCallback(async (payload: Partial<{ full_name: string; risk_profile: string; avatar_url: string }>) => {
+  const updateProfile = useCallback(async (payload: Partial<{ full_name: string; risk_profile: string; avatar_url: string; has_completed_onboarding: boolean }>) => {
     if (!user) return { success: false, message: 'Not logged in' };
     try {
       const res = await api.users.update(user.id, payload);
       setUser(res.user);
       localStorage.setItem('investai_user', JSON.stringify(res.user));
+      // Update hasCompletedOnboarding state and localStorage
+      if (res.user.has_completed_onboarding) {
+        setHasCompletedOnboarding(true);
+        localStorage.setItem('hasCompletedOnboarding', 'true');
+      }
       // Update investorLevel if risk profile changed
       if (res.user.risk_profile === 'Agresif') setInvestorLevel('Berpengalaman');
       else if (res.user.risk_profile === 'Moderat') setInvestorLevel('Menengah');

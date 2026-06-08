@@ -23,7 +23,7 @@ export default function Login() {
     const result = await login(email, password);
     
     if (result.success) {
-      navigate('/onboarding');
+      navigate('/dashboard');
     } else {
       setError(result.message);
     }
@@ -35,7 +35,7 @@ export default function Login() {
       setIsLoading(true);
       const result = await loginWithGoogle(credentialResponse.credential);
       if (result.success) {
-        navigate('/onboarding');
+        navigate('/dashboard');
       } else {
         setError(result.message);
       }

@@ -39,7 +39,7 @@ const createUser = async (req, res) => {
 
 // PATCH /api/users/:id
 const updateUser = async (req, res) => {
-  const { full_name, risk_profile, membership_level, avatar_url } = req.body;
+  const { full_name, risk_profile, membership_level, avatar_url, has_completed_onboarding } = req.body;
   try {
     const pool = await poolPromise;
     const result = await pool.request()
@@ -48,14 +48,16 @@ const updateUser = async (req, res) => {
       .input('risk_profile', sql.VarChar, risk_profile)
       .input('membership_level', sql.VarChar, membership_level)
       .input('avatar_url', sql.VarChar, avatar_url)
+      .input('has_completed_onboarding', sql.Bit, has_completed_onboarding)
       .query(`
         UPDATE Users SET
           full_name = COALESCE(@full_name, full_name),
           risk_profile = COALESCE(@risk_profile, risk_profile),
           membership_level = COALESCE(@membership_level, membership_level),
           avatar_url = COALESCE(@avatar_url, avatar_url),
+          has_completed_onboarding = COALESCE(@has_completed_onboarding, has_completed_onboarding),
           updated_at = CURRENT_TIMESTAMP
-        OUTPUT INSERTED.id, INSERTED.email, INSERTED.full_name, INSERTED.risk_profile, INSERTED.membership_level, INSERTED.avatar_url, INSERTED.google_id, INSERTED.created_at
+        OUTPUT INSERTED.id, INSERTED.email, INSERTED.full_name, INSERTED.risk_profile, INSERTED.membership_level, INSERTED.avatar_url, INSERTED.google_id, INSERTED.has_completed_onboarding, INSERTED.created_at
         WHERE id = @id
       `);
     res.json({ message: 'User berhasil diupdate', user: result.recordset[0] });

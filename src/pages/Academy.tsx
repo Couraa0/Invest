@@ -47,7 +47,7 @@ interface Module {
   curricula: Curriculum[];
 }
 
-const MODULES: Module[] = [
+const PEMULA_MODULES: Module[] = [
   {
     id: 1,
     title: 'Modul 1',
@@ -225,6 +225,312 @@ const MODULES: Module[] = [
           'Strategi satelit untuk pertumbuhan agresif',
           'Monitoring dan evaluasi portofolio',
           'Rencana investasi 1, 3, dan 5 tahun',
+        ],
+      },
+    ],
+  },
+];
+
+const MENENGAH_MODULES: Module[] = [
+  {
+    id: 1,
+    title: 'Modul 1',
+    subtitle: 'Pendalaman Analisis Fundamental',
+    desc: 'Tingkatkan keahlian fundamental Anda. Pelajari cara mendalam membaca laporan keuangan, menganalisis rasio profitabilitas dan valuasi saham.',
+    icon: BookOpen,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-500',
+    curricula: [
+      {
+        id: 'M1.1',
+        title: 'Membaca Laporan Keuangan Perusahaan',
+        desc: 'Pelajari teknik membaca laporan keuangan secara mendalam (neraca, laba-rugi, arus kas) untuk menganalisis kesehatan & kinerja bisnis emiten secara komprehensif.',
+        duration: '15 menit',
+        youtubeId: 'ScirBPnPVBM',
+        points: [
+          'Memahami komponen Neraca (Balance Sheet)',
+          'Membaca Laporan Laba Rugi (Income Statement) secara mendetil',
+          'Analisis Arus Kas (Cash Flow): Operasional, Investasi & Pendanaan',
+          'Mendeteksi tanda-tanda bahaya (red flags) dalam laporan keuangan',
+        ],
+      },
+      {
+        id: 'M1.2',
+        title: 'Analisis Rasio Keuangan (PER, PBV, ROE, DER)',
+        desc: 'Kuasai rasio keuangan utama untuk menilai profitabilitas, valuasi, efisiensi modal, serta rasio utang/solvabilitas perusahaan.',
+        duration: '18 menit',
+        youtubeId: 'DFH2Az4PRsA',
+        points: [
+          'Price to Earnings Ratio (PER) untuk valuasi laba',
+          'Price to Book Value (PBV) untuk menilai murah/mahal dari aset',
+          'Return on Equity (ROE) sebagai indikator efektivitas modal sendiri',
+          'Debt to Equity Ratio (DER) untuk mengukur tingkat utang emiten',
+        ],
+      },
+      {
+        id: 'M1.3',
+        title: 'Menentukan Nilai Wajar Saham',
+        desc: 'Pelajari metode dan teknik untuk menghitung estimasi nilai wajar (intrinsik) saham sebagai pedoman keputusan investasi Anda.',
+        duration: '20 menit',
+        youtubeId: 'jt6442xGVN0',
+        points: [
+          'Konsep nilai wajar (Fair Value / Intrinsik)',
+          'Metode valuasi sederhana menggunakan PER & PBV historis',
+          'Menghitung dan menerapkan Margin of Safety (MoS)',
+          'Menilai apakah harga saham saat ini murah, wajar, atau mahal',
+        ],
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: 'Modul 2',
+    subtitle: 'Pendalaman Analisis Teknikal',
+    desc: 'Kuasai analisis teknikal lebih jauh. Pelajari pemetaan tren yang akurat, penggunaan indikator teknikal lanjutan, serta penyusunan trading plan.',
+    icon: BarChart2,
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-500',
+    curricula: [
+      {
+        id: 'M2.1',
+        title: 'Support, Resistance, dan Trend Analysis',
+        desc: 'Pahami cara memetakan arah tren harga saham (Uptrend, Downtrend, Sideways) serta menentukan area support dan resistance kunci.',
+        duration: '16 menit',
+        youtubeId: 'AUuhS2swomU',
+        points: [
+          'Mengidentifikasi arah tren pasar secara visual dan struktural',
+          'Menentukan area Support dan Resistance menggunakan swing high/low',
+          'Menggambar garis tren (Trendline) dan garis saluran (Channel Line)',
+          'Konfirmasi breakout dan breakdown di pasar saham',
+        ],
+      },
+      {
+        id: 'M2.2',
+        title: 'Indikator Teknikal Lanjutan (MA, RSI, MACD, Fibonacci)',
+        desc: 'Gunakan indikator-indikator teknikal populer untuk memvalidasi sinyal beli/jual serta kekuatan momentum pergerakan harga.',
+        duration: '22 menit',
+        youtubeId: 'SgLGILWTRos',
+        points: [
+          'Moving Average (MA) & Exponential Moving Average (EMA) sebagai trend filter',
+          'Relative Strength Index (RSI) untuk mendeteksi area jenuh beli/jual',
+          'Moving Average Convergence Divergence (MACD) untuk analisis momentum',
+          'Fibonacci Retracement untuk memetakan level koreksi dan pantulan',
+        ],
+      },
+      {
+        id: 'M2.3',
+        title: 'Membangun Trading Plan',
+        desc: 'Pelajari cara merancang trading plan yang komprehensif dan disiplin untuk meminimalkan bias emosi saat transaksi di pasar saham.',
+        duration: '14 menit',
+        youtubeId: 'A816xreE_zs',
+        points: [
+          'Menentukan gaya trading (Trading Style) yang cocok untuk Anda',
+          'Menyusun skenario Entry, Stop Loss, dan Target Price yang matang',
+          'Menjaga disiplin psikologis dalam mengeksekusi rencana trading',
+          'Mencatat dan mengevaluasi jurnal trading secara berkala',
+        ],
+      },
+    ],
+  },
+  {
+    id: 3,
+    title: 'Modul 3',
+    subtitle: 'Strategi Investasi Menengah',
+    desc: 'Terapkan taktik investasi tingkat menengah untuk mengelola portofolio secara dinamis, mengontrol risiko, serta memanfaatkan swing/position trading.',
+    icon: Shield,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-500',
+    curricula: [
+      {
+        id: 'M3.1',
+        title: 'Diversifikasi dan Manajemen Portofolio',
+        desc: 'Pelajari pentingnya diversifikasi aset dan bagaimana menyusun alokasi portofolio saham untuk meminimalkan risiko pasar.',
+        duration: '17 menit',
+        youtubeId: 'imEkVB6vt4E',
+        points: [
+          'Konsep alokasi aset dan teori portofolio modern',
+          'Diversifikasi antar sektor industri untuk menekan risiko',
+          'Menyeimbangkan jumlah emiten dalam portofolio',
+          'Menghindari bahaya over-diversification',
+        ],
+      },
+      {
+        id: 'M3.2',
+        title: 'Strategi Swing Trading dan Position Trading',
+        desc: 'Pahami karakteristik strategi swing trading (memanfaatkan ayunan harga jangka pendek) dan position trading (mengikuti tren jangka menengah).',
+        duration: '19 menit',
+        youtubeId: 'LJF3frcDgRM',
+        points: [
+          'Prinsip dasar strategi Swing Trading',
+          'Menerapkan strategi Position Trading untuk trend jangka menengah-panjang',
+          'Memilih saham yang berfluktuasi sehat untuk swing trading',
+          'Mengatur durasi hold posisi (posisi terbuka)',
+        ],
+      },
+      {
+        id: 'M3.3',
+        title: 'Mengelola Risiko dan Psikologi Investasi',
+        desc: 'Latih psikologi trading Anda untuk tetap rasional dan objektif dalam menghadapi gejolak market.',
+        duration: '15 menit',
+        youtubeId: 'Jx_bGxyWVLc',
+        points: [
+          'Mengenali bias psikologis (FOMO, Greed, Fear, Loss Aversion)',
+          'Mengimplementasikan manajemen risiko (Risk-Reward Ratio) yang ketat',
+          'Menghadapi floating loss atau floating profit dengan kepala dingin',
+          'Pentingnya konsistensi dalam jangka panjang',
+        ],
+      },
+    ],
+  },
+];
+
+const BERPENGALAMAN_MODULES: Module[] = [
+  {
+    id: 1,
+    title: 'Modul 1',
+    subtitle: 'Analisis Lanjutan Pasar Modal',
+    desc: 'Pelajari analisis top-down profesional. Pahami keterkaitan makroekonomi, siklus sektoral, serta valuasi intrinsik menggunakan Discounted Cash Flow (DCF).',
+    icon: BarChart2,
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-500',
+    curricula: [
+      {
+        id: 'B1.1',
+        title: 'Analisis Sektoral dan Siklus Industri',
+        desc: 'Pahami konsep rotasi sektor (Sector Rotation) di bursa saham dan bagaimana siklus ekonomi makro memengaruhi kinerja industri tertentu.',
+        duration: '20 menit',
+        youtubeId: 'B5-9Cj8Og98',
+        points: [
+          'Konsep rotasi sektor (Sector Rotation) dalam investasi',
+          'Menganalisis karakteristik industri siklikal vs defensif',
+          'Menangkap peluang pada sektor yang sedang booming',
+          'Pengaruh siklus komoditas global terhadap emiten lokal',
+        ],
+      },
+      {
+        id: 'B1.2',
+        title: 'Analisis Makroekonomi terhadap Pasar Saham',
+        desc: 'Analisis pengaruh indikator makroekonomi utama (inflasi, suku bunga, GDP) terhadap pergerakan bursa saham domestik dan global.',
+        duration: '22 menit',
+        youtubeId: 'K8mjE7Mn-Zc',
+        points: [
+          'Dampak kebijakan moneter bank sentral (BI Rate & Fed Rate)',
+          'Menganalisis data pertumbuhan ekonomi (GDP) dan Inflasi',
+          'Hubungan pergerakan nilai tukar mata uang dengan kinerja saham',
+          'Menerapkan pendekatan Top-Down Analysis dalam berinvestasi',
+        ],
+      },
+      {
+        id: 'B1.3',
+        title: 'Valuasi Saham Lanjutan (DCF & Relative Valuation)',
+        desc: 'Tingkatkan keahlian valuasi Anda ke level profesional menggunakan model Discounted Cash Flow (DCF) dan pembandingan valuasi relatif lanjutan.',
+        duration: '26 menit',
+        youtubeId: 'Cb-GbS0hkHI',
+        points: [
+          'Prinsip dasar perhitungan Discounted Cash Flow (DCF)',
+          'Menghitung Free Cash Flow (FCF) dan Weighted Average Cost of Capital (WACC)',
+          'Menentukan Terminal Value dan memperkirakan nilai intrinsik',
+          'Analisis sensitivitas valuasi saham terhadap asumsi pertumbuhan',
+        ],
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: 'Modul 2',
+    subtitle: 'Strategi Investasi Lanjutan',
+    desc: 'Kuasai taktik investasi canggih: Value Investing mendalam dengan Margin of Safety, Growth & Momentum Investing, hingga analisis multi-timeframe.',
+    icon: Zap,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-500',
+    curricula: [
+      {
+        id: 'B2.1',
+        title: 'Value Investing dan Margin of Safety',
+        desc: 'Pelajari filosofi Value Investing secara mendalam ala Warren Buffett untuk berinvestasi pada saham bernilai tinggi dengan diskon signifikan.',
+        duration: '18 menit',
+        youtubeId: 'zr2NuWC5Oy8',
+        points: [
+          'Prinsip Value Investing: membeli saham di bawah harga intrinsik',
+          'Analisis keunggulan kompetitif (Economic Moat) yang berkelanjutan',
+          'Penerapan Margin of Safety lebar untuk memproteksi modal investasi',
+          'Studi kasus investasi nilai jangka panjang yang sukses',
+        ],
+      },
+      {
+        id: 'B2.2',
+        title: 'Growth Investing dan Momentum Investing',
+        desc: 'Kuasai cara mencari saham pertumbuhan tinggi (Growth Stock) serta strategi momentum untuk mempercepat tingkat pengembalian portofolio.',
+        duration: '21 menit',
+        youtubeId: 'X-E2gqasSA8',
+        points: [
+          'Kriteria screening perusahaan dengan potensi pertumbuhan eksponensial',
+          'Menganalisis pertumbuhan laba masa depan (Earnings Growth Rate)',
+          'Strategi Momentum Investing: mengikuti tren naik yang kuat',
+          'Strategi entry dan exit point pada saham growth/momentum',
+        ],
+      },
+      {
+        id: 'B2.3',
+        title: 'Strategi Multi-Timeframe Analysis',
+        desc: 'Pelajari teknik sinkronisasi grafik harga dari berbagai timeframe untuk memperoleh entry dan exit dengan probabilitas keberhasilan tertinggi.',
+        duration: '16 menit',
+        youtubeId: '0aqM3HWCAkA',
+        points: [
+          'Membaca tren utama di timeframe besar (Daily/Weekly)',
+          'Menentukan pemicu (trigger) entry di timeframe kecil (Hourly/15-Minutes)',
+          'Menghindari sinyal palsu (noise) dengan konfirmasi multi-timeframe',
+          'Pola visual yang umum digunakan dalam swing/position trading',
+        ],
+      },
+    ],
+  },
+  {
+    id: 3,
+    title: 'Modul 3',
+    subtitle: 'Manajemen Portofolio Profesional',
+    desc: 'Pelajari cara mengelola portofolio skala besar, alokasi aset yang optimal, kontrol risiko tingkat lanjut, serta evaluasi performa investasi.',
+    icon: Trophy,
+    color: 'text-red-600',
+    bgColor: 'bg-red-500',
+    curricula: [
+      {
+        id: 'B3.1',
+        title: 'Asset Allocation dan Diversifikasi Portofolio',
+        desc: 'Desain alokasi aset (saham, obligasi, kas) secara taktis agar portofolio tetap tangguh di berbagai kondisi pasar keuangan.',
+        duration: '22 menit',
+        youtubeId: 'lwR0aoGXK4k',
+        points: [
+          'Menentukan alokasi aset taktis (Tactical Asset Allocation)',
+          'Diversifikasi modern untuk meminimalkan risiko sistematik',
+          'Melakukan penyeimbangan kembali (Rebalancing) portofolio secara dinamis',
+          'Membangun portofolio inti dan satelit',
+        ],
+      },
+      {
+        id: 'B3.2',
+        title: 'Risk Management dan Evaluasi Kinerja Investasi',
+        desc: 'Pahami metrik evaluasi kinerja portofolio profesional dan kendalikan drawdown modal secara optimal.',
+        duration: '25 menit',
+        youtubeId: 'mgl6y3umY_s',
+        points: [
+          'Metrik kinerja: Sharpe Ratio, Treynor Ratio, Alpha, dan Beta',
+          'Menilai risiko menggunakan Maximum Drawdown dan Value at Risk (VaR)',
+          'Strategi position sizing & alokasi dana darurat/cash buffer',
+          'Evaluasi kinerja portofolio dibandingkan dengan benchmark (IHSG)',
+        ],
+      },
+      {
+        id: 'B3.3',
+        title: 'Membangun Strategi Investasi Jangka Panjang',
+        desc: 'Rancang rencana investasi jangka panjang yang tangguh untuk menghasilkan wealth compounding secara optimal.',
+        duration: '24 menit',
+        youtubeId: 'jq3uWDk1h0Q',
+        points: [
+          'Menentukan sasaran keuangan (Financial Goals) jangka panjang',
+          'Memahami efek bola salju dari Compounding Interest',
+          'Menghadapi koreksi tajam bursa (Market Crash) secara terstruktur',
+          'Menjaga komitmen dan konsistensi rencana investasi jangka panjang',
         ],
       },
     ],
@@ -507,10 +813,20 @@ function ModuleCard({ module, index, onPlay, watchedVideos }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Academy() {
-  const { user } = useUser();
+  type InvestorLevel = 'Pemula' | 'Menengah' | 'Berpengalaman';
+  
+  const { investorLevel: userLevel, user, updateProfile } = useUser();
+  const [activeLevel, setActiveLevel] = useState<InvestorLevel>('Pemula');
   const [activeVideo, setActiveVideo] = useState<Curriculum | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
   const [isMarking, setIsMarking] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (userLevel) {
+      setActiveLevel(userLevel);
+    }
+  }, [userLevel]);
 
   useEffect(() => {
     if (user) {
@@ -531,9 +847,51 @@ export default function Academy() {
     }
   };
 
-  const totalCurricula = MODULES.reduce((acc, m) => acc + m.curricula.length, 0);
-  const totalMinutes = MODULES.reduce((acc, m) =>
+  const getModulesList = (level: InvestorLevel) => {
+    if (level === 'Menengah') return MENENGAH_MODULES;
+    if (level === 'Berpengalaman') return BERPENGALAMAN_MODULES;
+    return PEMULA_MODULES;
+  };
+
+  const activeModules = getModulesList(activeLevel);
+
+  const totalCurricula = activeModules.reduce((acc, m) => acc + m.curricula.length, 0);
+  const totalMinutes = activeModules.reduce((acc, m) =>
     acc + m.curricula.reduce((a, c) => a + parseInt(c.duration), 0), 0);
+
+  const heroContent = {
+    Pemula: {
+      title: "Dari Nol Hingga Investor Profesional",
+      desc: `3 modul komprehensif · ${totalCurricula} video pembelajaran · Materi dari dasar investasi sampai manajemen portofolio`,
+      badge: "Jalur Belajar Dasar"
+    },
+    Menengah: {
+      title: "Pendalaman Analisis & Strategi Transaksi",
+      desc: `3 modul komprehensif · ${totalCurricula} video pembelajaran · Kuasai analisis rasio keuangan, trendline, dan swing trading`,
+      badge: "Jalur Belajar Menengah"
+    },
+    Berpengalaman: {
+      title: "Valuasi Profesional & Manajemen Aset",
+      desc: `3 modul komprehensif · ${totalCurricula} video pembelajaran · Pelajari DCF valuation, multi-timeframe analysis, dan rebalancing`,
+      badge: "Jalur Belajar Lanjutan"
+    }
+  }[activeLevel];
+
+  const handleSetDefaultLevel = async () => {
+    setIsUpdatingProfile(true);
+    try {
+      let risk_profile = 'Moderat';
+      if (activeLevel === 'Pemula') risk_profile = 'Konservatif';
+      else if (activeLevel === 'Menengah') risk_profile = 'Moderat';
+      else if (activeLevel === 'Berpengalaman') risk_profile = 'Agresif';
+      
+      await updateProfile({ risk_profile });
+    } catch (e) {
+      console.error('Failed to update profile level', e);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
   return (
     <>
@@ -554,7 +912,7 @@ export default function Academy() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
         >
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/8 border border-secondary/12 text-secondary text-[10px] font-semibold uppercase tracking-wider mb-2">
@@ -566,10 +924,40 @@ export default function Academy() {
             </p>
           </div>
 
+          {/* Level Selector Tabs */}
+          <div className="bg-slate-100 p-1.5 rounded-2xl flex gap-1 shadow-inner shrink-0 w-full sm:w-auto max-w-md self-start lg:self-center">
+            {(['Pemula', 'Menengah', 'Berpengalaman'] as InvestorLevel[]).map(lvl => {
+              const isActive = activeLevel === lvl;
+              const isProfileLevel = userLevel === lvl;
+              let Icon = Shield;
+              if (lvl === 'Menengah') Icon = TrendingUp;
+              if (lvl === 'Berpengalaman') Icon = Zap;
+
+              return (
+                <button
+                  key={lvl}
+                  onClick={() => setActiveLevel(lvl)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all relative whitespace-nowrap",
+                    isActive
+                      ? "bg-white text-primary shadow-sm"
+                      : "text-on-surface-variant/70 hover:bg-white/40 hover:text-primary"
+                  )}
+                >
+                  <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary" : "text-on-surface-variant/40")} />
+                  <span>{lvl}</span>
+                  {isProfileLevel && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-secondary absolute top-1.5 right-1.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full lg:w-auto mt-2 lg:mt-0">
             {[
-              { icon: BookOpen, label: 'Modul', value: `${MODULES.length}`, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { icon: BookOpen, label: 'Modul', value: `${activeModules.length}`, color: 'text-blue-600', bg: 'bg-blue-50' },
               { icon: PlayCircle, label: 'Video', value: `${totalCurricula}`, color: 'text-violet-600', bg: 'bg-violet-50' },
               { icon: Clock, label: 'Durasi', value: `${Math.round(totalMinutes / 60)}j ${totalMinutes % 60}m`, color: 'text-emerald-600', bg: 'bg-emerald-50' },
             ].map((stat, i) => (
@@ -583,6 +971,37 @@ export default function Academy() {
             ))}
           </div>
         </motion.div>
+
+        {/* ── Level Warning/Switch Banner ── */}
+        <AnimatePresence>
+          {activeLevel !== userLevel && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-amber-50/70 border border-amber-200/50 backdrop-blur-sm p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold">Materi di Luar Profil Anda</p>
+                  <p className="text-[11px] text-amber-800/80 mt-0.5">
+                    Anda sedang melihat kurikulum level <strong>{activeLevel}</strong>. Profil investor Anda saat ini diset sebagai <strong>{userLevel}</strong>.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleSetDefaultLevel}
+                disabled={isUpdatingProfile}
+                className="shrink-0 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-[0.98] disabled:opacity-50"
+              >
+                {isUpdatingProfile ? "Mengupdate..." : "Jadikan Default Profil Saya"}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Hero Banner ── */}
         <motion.div
@@ -600,16 +1019,18 @@ export default function Academy() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider">Jalur Belajar Lengkap</span>
+                <span className="text-[11px] font-bold text-yellow-400 uppercase tracking-wider">{heroContent.badge}</span>
               </div>
-              <h2 className="text-xl font-bold mb-1">Dari Nol Hingga Investor Profesional</h2>
+              <h2 className="text-xl font-bold mb-1">{heroContent.title}</h2>
               <p className="text-sm text-white/70 max-w-md">
-                3 modul komprehensif · 10 video pembelajaran · Materi dari fundamental sampai strategi portofolio
+                {heroContent.desc}
               </p>
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3">
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Users className="w-3.5 h-3.5 text-white/60" />
-                  <span className="text-xs text-white/70">Cocok untuk pemula</span>
+                  <span className="text-xs text-white/70">
+                    {activeLevel === 'Pemula' ? 'Cocok untuk pemula' : activeLevel === 'Menengah' ? 'Cocok untuk tingkat menengah' : 'Cocok untuk profesional'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Target className="w-3.5 h-3.5 text-white/60" />
@@ -623,7 +1044,7 @@ export default function Academy() {
                 <span className="text-sm font-bold">{totalCurricula} Kurikulum</span>
               </div>
               <button
-                onClick={() => setActiveVideo(MODULES[0].curricula[0])}
+                onClick={() => setActiveVideo(activeModules[0].curricula[0])}
                 className="flex items-center gap-2 bg-white text-primary px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-white/90 transition-all active:scale-[0.98] shadow-lg"
               >
                 <PlayCircle className="w-4 h-4" /> Mulai Belajar
@@ -641,14 +1062,14 @@ export default function Academy() {
             </div>
             <div className="flex items-center gap-1.5 text-on-surface-variant/50 text-xs">
               <Zap className="w-3.5 h-3.5" />
-              <span>{MODULES.length} Modul</span>
+              <span>{activeModules.length} Modul</span>
               <ChevronRight className="w-3.5 h-3.5" />
               <span>{totalCurricula} Video</span>
             </div>
           </div>
 
           <div className="space-y-4">
-            {MODULES.map((module, i) => (
+            {activeModules.map((module, i) => (
               <ModuleCard
                 key={module.id}
                 module={module}
