@@ -10,7 +10,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel, Field
 
-from ..services.prediction_service import (
+from app.services.prediction_service import (
     predict_stock,
     get_chart_data,
     get_market_overview,
@@ -307,10 +307,10 @@ async def get_market_insight():
     if cached:
         return {"status": "success", "insight": cached, "cached": True}
 
-    from ..services.prediction_service import get_market_overview
+    from app.services.prediction_service import get_market_overview
     overview = get_market_overview()
     
-    from ..services.mentor_service import generate_market_insight
+    from app.services.mentor_service import generate_market_insight
     insight = await generate_market_insight(overview)
     
     _cache_set("market_insight", insight)
@@ -330,7 +330,7 @@ async def get_ihsg_chart(
     if cached:
         return {"status": "success", "data": cached, "period": period, "cached": True}
 
-    from ..services.prediction_service import get_chart_data as _get_chart
+    from app.services.prediction_service import get_chart_data as _get_chart
     try:
         chart = _get_chart("^JKSE", period)
     except Exception as e:
@@ -364,7 +364,7 @@ async def chat_mentor(request: ChatRequest):
     Kirim riwayat chat ke AI Mentor yang ditenagai oleh Groq (Llama 3.1 8B Instant).
     """
     messages_dict = [{"role": msg.role, "content": msg.content} for msg in request.messages]
-    from ..services.mentor_service import chat_with_mentor
+    from app.services.mentor_service import chat_with_mentor
     response = await chat_with_mentor(messages_dict)
     return response
 
@@ -456,7 +456,7 @@ async def analyze_stock_news(request: NewsAnalyzeRequest):
 
     try:
         # Import lazily agar startup app tidak terganggu bila LangGraph belum terinstall
-        from ..services.news_agent import analyze_ticker
+        from app.services.news_agent import analyze_ticker
 
         # Jalankan synchronous LangGraph agent di thread terpisah (non-blocking)
         result = await asyncio.to_thread(analyze_ticker, ticker, days)
@@ -554,7 +554,7 @@ async def analyze_stock_news_stream(request: NewsAnalyzeRequest):
 
     async def event_generator():
         try:
-            from ..services.news_agent import analyze_ticker_stream
+            from app.services.news_agent import analyze_ticker_stream
         except ImportError as e:
             logger.error(f"❌ Import error news_agent: {e}")
             yield f"data: {json.dumps({'status': 'error', 'message': 'LangGraph dependencies belum terinstall.'})}\n\n"

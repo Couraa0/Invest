@@ -38,7 +38,7 @@ def get_stocks_summary_for_prompt() -> str:
     
     # 1. Coba ambil dari cache routes.py (sangat cepat)
     try:
-        from ..api.routes import _cache
+        from app.api.routes import _cache
         cached_data, _ = _cache.get("all_stocks", (None, None))
         if cached_data:
             stocks = cached_data
@@ -48,7 +48,7 @@ def get_stocks_summary_for_prompt() -> str:
     # 2. Jika cache kosong (misal baru dinyalakan), ambil live via prediction_service
     if not stocks:
         try:
-            from .prediction_service import predict_stock, TICKERS
+            from app.services.prediction_service import predict_stock, TICKERS
             stocks = []
             for ticker in TICKERS:
                 try:

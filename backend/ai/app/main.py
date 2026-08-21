@@ -10,8 +10,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import router
-from .services.prediction_service import load_model
+from app.api.routes import router
+from app.services.prediction_service import load_model
 
 # ================================================================
 # Logging
@@ -35,17 +35,17 @@ async def lifespan(app: FastAPI):
     Startup: load XGBoost model ke memory sekali saja.
     Shutdown: bersihkan resources.
     """
-    logger.info("🚀 InvestAI API v2 starting up (XGBoost Engine)...")
+    logger.info("🚀 InvestAI API v2 starting up (Technical Indicators Engine)...")
     try:
         bundle = load_model()
         logger.info(
-            f"✅ XGBoost model loaded — "
+            f"✅ Prediction engine loaded — "
             f"Fitur: {len(bundle['feature_cols'])}, "
             f"Akurasi: {bundle.get('accuracy_val', bundle.get('accuracy', 'N/A'))}"
         )
     except Exception as e:
-        logger.error(f"❌ Gagal load model: {e}")
-        logger.warning("⚠️  API berjalan tanpa model — endpoint predict akan error")
+        logger.error(f"❌ Gagal load engine: {e}")
+        logger.warning("⚠️  API berjalan tanpa engine — endpoint predict akan error")
 
     yield  # aplikasi berjalan
 

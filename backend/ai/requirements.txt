@@ -1,19 +1,12 @@
 fastapi
 uvicorn
 pydantic
-scikit-learn
 pandas
 numpy
 python-dotenv
 yfinance
-joblib
 httpx
-xgboost
-# ── LangGraph News Agent ──────────────────────────────────────────
-langgraph
-langchain
-langchain-groq
-langchain-core
+# ── News Agent (lightweight, no LangChain) ─────────────────────
 feedparser
 beautifulsoup4
 python-dateutil
