@@ -103,17 +103,24 @@ const getMe = async (req, res) => {
 };
 
 const { OAuth2Client } = require('google-auth-library');
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy-client-id');
 
 // POST /api/auth/google
 const googleLogin = async (req, res) => {
   const { token: googleToken } = req.body;
   if (!googleToken) return res.status(400).json({ error: 'Token Google tidak ditemukan' });
 
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId || clientId === 'dummy-client-id') {
+    console.error('Google Auth Error: GOOGLE_CLIENT_ID not configured in environment variables');
+    return res.status(500).json({ error: 'GOOGLE_CLIENT_ID belum dikonfigurasi di server. Tambahkan di Vercel Environment Variables.' });
+  }
+
+  const googleClient = new OAuth2Client(clientId);
+
   try {
     const ticket = await googleClient.verifyIdToken({
       idToken: googleToken,
-      audience: process.env.GOOGLE_CLIENT_ID || 'dummy-client-id',
+      audience: clientId,
     });
     const payload = ticket.getPayload();
     const { sub: google_id, email, name: full_name, picture: avatar_url } = payload;
@@ -177,8 +184,8 @@ const googleLogin = async (req, res) => {
     
     res.json({ user: safeUser, token });
   } catch (err) {
-    console.error('Google Auth Error:', err);
-    res.status(500).json({ error: 'Gagal memverifikasi akun Google' });
+    console.error('Google Auth Error:', err.message || err);
+    res.status(500).json({ error: `Gagal memverifikasi akun Google: ${err.message}` });
   }
 };
 
