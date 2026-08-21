@@ -17,7 +17,7 @@ load_dotenv(dotenv_path=dotenv_path)
 
 logger = logging.getLogger(__name__)
 
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = "openai/gpt-oss-20b"
 
 SYSTEM_PROMPT = (
     "Anda adalah 'InvestAI Mentor', asisten AI keuangan dan penasihat saham profesional di Indonesia. "
