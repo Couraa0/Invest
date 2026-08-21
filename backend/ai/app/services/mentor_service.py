@@ -33,24 +33,29 @@ def get_stocks_summary_for_prompt() -> str:
     """
     Mengambil data harga real-time dan prediksi dari cache atau secara live
     untuk diberikan kepada AI Mentor sebagai konteks pengetahuan tambahan.
+    Dibatasi hanya untuk saham blue-chip utama agar payload tidak terlalu besar (menghindari error 413).
     """
     stocks = []
+    
+    # 5 Saham Blue-Chip Utama sebagai referensi utama
+    target_tickers = ["BBCA.JK", "BBRI.JK", "BMRI.JK", "TLKM.JK", "ASII.JK"]
     
     # 1. Coba ambil dari cache routes.py (sangat cepat)
     try:
         from app.api.routes import _cache
         cached_data, _ = _cache.get("all_stocks", (None, None))
         if cached_data:
-            stocks = cached_data
+            # Filter hanya saham target agar tidak membebani prompt
+            stocks = [s for s in cached_data if s.get("ticker") in target_tickers]
     except Exception as e:
         logger.warning(f"Gagal mengambil cache stock untuk AI Mentor: {e}")
 
-    # 2. Jika cache kosong (misal baru dinyalakan), ambil live via prediction_service
-    if not stocks:
+    # 2. Jika cache kosong (atau tidak lengkap), ambil live via prediction_service hanya untuk target_tickers
+    if len(stocks) < len(target_tickers):
         try:
-            from app.services.prediction_service import predict_stock, TICKERS
+            from app.services.prediction_service import predict_stock
             stocks = []
-            for ticker in TICKERS:
+            for ticker in target_tickers:
                 try:
                     stocks.append(predict_stock(ticker))
                 except Exception as ex:
@@ -62,12 +67,12 @@ def get_stocks_summary_for_prompt() -> str:
         return "Catatan: Data harga saham real-time IDX saat ini tidak dapat dimuat."
 
     lines = [
-        "Berikut adalah data harga saham real-time Indonesia (BEI/IDX) beserta analisis teknikal & sinyal prediksi Machine Learning (XGBoost) saat ini:"
+        "Berikut adalah data harga saham real-time Indonesia (BEI/IDX) beserta analisis teknikal & sinyal prediksi Machine Learning saat ini:"
     ]
     for s in stocks:
         lines.append(
             f"- **{s['symbol']}** ({s['name']}): Harga Rp {s['harga']:,} ({'+' if s['change_pct'] >= 0 else ''}{s['change_pct']:.2f}%), "
-            f"Sinyal ML AI: **{s['action']}** (Kekuatan: {s['strength']}, Confidence: {s['confidence']:.1f}%), "
+            f"Sinyal AI: **{s['action']}** (Kekuatan: {s['strength']}, Confidence: {s['confidence']:.1f}%), "
             f"RSI: {s['rsi']:.1f} ({s['rsi_status']}), "
             f"MACD: {s['macd_status']} ({s['ma_status']}), "
             f"Rekomendasi TP (Take Profit): Rp {s['take_profit']:,}, SL (Stop Loss): Rp {s['stop_loss']:,}"
