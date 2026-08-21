@@ -349,7 +349,7 @@ def _generate_report(ticker: str, articles: list, sentiment: dict, lookback_days
         for a in articles[:10]
     ])
 
-    user_prompt = f"""Buat laporan analisis berita saham {code} (IDX) dalam Bahasa Indonesia.
+    user_prompt = f"""Buat laporan analisis berita saham {code} (IDX) dalam Bahasa Indonesia dengan format Markdown premium.
 Periode analisis: {lookback_days} hari terakhir.
 
 Data Sentimen:
@@ -358,26 +358,46 @@ Data Sentimen:
 Berita Terkini (10 teratas):
 {articles_summary if articles_summary else "Tidak ada berita ditemukan."}
 
-Format laporan:
+--- PANDUAN FORMAT LAPORAN (WAJIB DIIKUTI SECARA PRESISI) ---
+Laporan harus disusun dengan struktur visual yang sangat menarik dan premium seperti berikut:
+
 ## 📊 Laporan Analisis Berita — {code}
 
-### 🎯 Ringkasan Sentimen
-[Sentimen keseluruhan dan skor]
+### 🎯 Ringkasan Sentimen & Skor
+> **Sentimen Pasar Terkini:**
+> - **Sentimen:** [BULLISH 🟢 | BEARISH 🔴 | NETRAL 🟡]
+> - **Skor Sentimen:** [Skor sentimen, misal: +75/100 atau -45/100]
+> - **Volume Berita:** [Jumlah berita positif] Positif / [Jumlah berita negatif] Negatif / [Jumlah berita netral] Netral
 
-### 📰 Topik Utama
-[3-5 topik dominan dari berita]
+### 📰 Topik Utama & Isu Dominan
+*Sajikan dalam bentuk tabel berikut untuk merangkum topik utama dari berita:*
+| Topik Utama | Deskripsi / Dampak pada Saham | Relevansi |
+| :--- | :--- | :--- |
+| [Topik 1] | [Deskripsi singkat topik 1] | [Tinggi/Sedang] |
+| [Topik 2] | [Deskripsi singkat topik 2] | [Tinggi/Sedang] |
+| [Topik 3] | [Deskripsi singkat topik 3] | [Tinggi/Sedang] |
 
-### ⚡ Katalis Positif
-[Faktor-faktor yang bisa mendorong harga naik]
+### ⚡ Katalis Positif vs ⚠️ Faktor Risiko
+*Gunakan perbandingan yang seimbang untuk membantu investor memetakan peluang dan tantangan:*
 
-### ⚠️ Faktor Risiko
-[Risiko yang perlu diwaspadai investor]
+#### 🟢 Katalis Pendorong (Bullish Triggers)
+- [Katalis 1 dengan penjelasan singkat]
+- [Katalis 2 dengan penjelasan singkat]
 
-### 💡 Rekomendasi
-[Rekomendasi singkat berdasarkan berita — BUKAN saran investasi finansial]
+#### 🔴 Faktor Penghambat (Bearish Risks)
+- [Risiko 1 dengan penjelasan singkat]
+- [Risiko 2 dengan penjelasan singkat]
+
+### 💡 Rekomendasi Aksi & Checklist Investor
+> **Tip untuk Investor:**
+> Rencana aksi yang bisa dipertimbangkan oleh investor (bukan saran keuangan mutlak).
+- [ ] **Strategi Masuk/Keluar:** [Penjelasan strategi berdasarkan sentimen berita]
+- [ ] **Horizon Waktu:** [Apakah berita ini berdampak jangka pendek/menengah/panjang]
+- [ ] **Manajemen Risiko:** [Apa yang harus dilakukan jika risiko di atas terjadi]
 
 ### 📌 Disclaimer
-Laporan ini dibuat otomatis berdasarkan analisis berita dan bukan merupakan saran investasi."""
+*Laporan ini dihasilkan secara otomatis oleh sistem AI berbasis berita publik dan tidak dimaksudkan sebagai nasihat atau rekomendasi investasi finansial resmi. Selalu lakukan riset mandiri sebelum mengambil keputusan.*
+"""
 
     try:
         report = _call_groq(
