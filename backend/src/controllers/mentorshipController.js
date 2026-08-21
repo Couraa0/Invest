@@ -1,13 +1,16 @@
-const { poolPromise, sql } = require('../config/db');
+const { supabase } = require('../config/db');
 
 // GET /api/mentorship/:userId/sessions
 const getSessions = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query('SELECT * FROM Mentorship_Sessions WHERE user_id = @userId ORDER BY updated_at DESC');
-    res.json(result.recordset);
+    const { data: sessions, error } = await supabase
+      .from('Mentorship_Sessions')
+      .select('*')
+      .eq('user_id', req.params.userId)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(sessions);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -17,12 +20,14 @@ const getSessions = async (req, res) => {
 const createSession = async (req, res) => {
   const { title } = req.body;
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .input('title', sql.VarChar, title || 'New Session')
-      .query('INSERT INTO Mentorship_Sessions (user_id, title) OUTPUT INSERTED.* VALUES (@userId, @title)');
-    res.status(201).json(result.recordset[0]);
+    const { data: session, error } = await supabase
+      .from('Mentorship_Sessions')
+      .insert([{ user_id: req.params.userId, title: title || 'New Session' }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(session);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -33,11 +38,12 @@ const updateSessionTitle = async (req, res) => {
   const { title } = req.body;
   if (!title) return res.status(400).json({ error: 'title wajib diisi' });
   try {
-    const pool = await poolPromise;
-    await pool.request()
-      .input('sessionId', sql.UniqueIdentifier, req.params.sessionId)
-      .input('title', sql.VarChar, title)
-      .query('UPDATE Mentorship_Sessions SET title = @title, updated_at = CURRENT_TIMESTAMP WHERE id = @sessionId');
+    const { error } = await supabase
+      .from('Mentorship_Sessions')
+      .update({ title, updated_at: new Date().toISOString() })
+      .eq('id', req.params.sessionId);
+
+    if (error) throw error;
     res.json({ message: 'Judul sesi diperbarui' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -47,10 +53,12 @@ const updateSessionTitle = async (req, res) => {
 // DELETE /api/mentorship/sessions/:sessionId
 const deleteSession = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    await pool.request()
-      .input('sessionId', sql.UniqueIdentifier, req.params.sessionId)
-      .query('DELETE FROM Mentorship_Sessions WHERE id = @sessionId');
+    const { error } = await supabase
+      .from('Mentorship_Sessions')
+      .delete()
+      .eq('id', req.params.sessionId);
+
+    if (error) throw error;
     res.json({ message: 'Sesi dihapus' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -60,11 +68,14 @@ const deleteSession = async (req, res) => {
 // GET /api/mentorship/sessions/:sessionId/messages
 const getMessages = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('sessionId', sql.UniqueIdentifier, req.params.sessionId)
-      .query('SELECT * FROM Mentorship_Messages WHERE session_id = @sessionId ORDER BY created_at ASC');
-    res.json(result.recordset);
+    const { data: messages, error } = await supabase
+      .from('Mentorship_Messages')
+      .select('*')
+      .eq('session_id', req.params.sessionId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    res.json(messages);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -75,21 +86,27 @@ const addMessage = async (req, res) => {
   const { sender_role, content } = req.body;
   if (!sender_role || !content) return res.status(400).json({ error: 'sender_role dan content wajib diisi' });
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('sessionId', sql.UniqueIdentifier, req.params.sessionId)
-      .input('senderRole', sql.VarChar, sender_role)
-      .input('content', sql.Text, content)
-      .query(`
-        INSERT INTO Mentorship_Messages (session_id, sender_role, content)
-        OUTPUT INSERTED.*
-        VALUES (@sessionId, @senderRole, @content)
-      `);
+    const { data: message, error: insError } = await supabase
+      .from('Mentorship_Messages')
+      .insert([{
+        session_id: req.params.sessionId,
+        sender_role,
+        content
+      }])
+      .select()
+      .single();
+
+    if (insError) throw insError;
+
     // Update timestamp sesi
-    await pool.request()
-      .input('sessionId', sql.UniqueIdentifier, req.params.sessionId)
-      .query('UPDATE Mentorship_Sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = @sessionId');
-    res.status(201).json(result.recordset[0]);
+    const { error: updError } = await supabase
+      .from('Mentorship_Sessions')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', req.params.sessionId);
+
+    if (updError) throw updError;
+
+    res.status(201).json(message);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

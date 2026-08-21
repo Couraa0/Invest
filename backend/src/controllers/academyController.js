@@ -1,12 +1,15 @@
-const { poolPromise, sql } = require('../config/db');
+const { supabase } = require('../config/db');
 
 // GET /api/academy/courses
 const getCourses = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .query('SELECT * FROM Courses ORDER BY created_at DESC');
-    res.json(result.recordset);
+    const { data: courses, error } = await supabase
+      .from('Courses')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(courses);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -15,17 +18,24 @@ const getCourses = async (req, res) => {
 // GET /api/academy/courses/:courseId
 const getCourseDetail = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const courseRes = await pool.request()
-      .input('courseId', sql.UniqueIdentifier, req.params.courseId)
-      .query('SELECT * FROM Courses WHERE id = @courseId');
-    if (!courseRes.recordset.length) return res.status(404).json({ error: 'Course tidak ditemukan' });
+    const { data: course, error: courseError } = await supabase
+      .from('Courses')
+      .select('*')
+      .eq('id', req.params.courseId)
+      .maybeSingle();
 
-    const modulesRes = await pool.request()
-      .input('courseId', sql.UniqueIdentifier, req.params.courseId)
-      .query('SELECT * FROM Course_Modules WHERE course_id = @courseId ORDER BY sequence_order ASC');
+    if (courseError) throw courseError;
+    if (!course) return res.status(404).json({ error: 'Course tidak ditemukan' });
 
-    res.json({ ...courseRes.recordset[0], modules: modulesRes.recordset });
+    const { data: modules, error: modulesError } = await supabase
+      .from('Course_Modules')
+      .select('*')
+      .eq('course_id', req.params.courseId)
+      .order('sequence_order', { ascending: true });
+
+    if (modulesError) throw modulesError;
+
+    res.json({ ...course, modules });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -34,17 +44,25 @@ const getCourseDetail = async (req, res) => {
 // GET /api/academy/progress/:userId
 const getUserProgress = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query(`
-        SELECT p.*, c.title as course_title, c.difficulty_level
-        FROM User_Course_Progress p
-        JOIN Courses c ON p.course_id = c.id
-        WHERE p.user_id = @userId
-        ORDER BY p.last_accessed DESC
-      `);
-    res.json(result.recordset);
+    const { data, error } = await supabase
+      .from('User_Course_Progress')
+      .select('*, Courses:course_id(title, difficulty_level)')
+      .eq('user_id', req.params.userId)
+      .order('last_accessed', { ascending: false });
+
+    if (error) throw error;
+
+    const formatted = (data || []).map(row => ({
+      user_id: row.user_id,
+      course_id: row.course_id,
+      status: row.status,
+      progress_percentage: row.progress_percentage,
+      last_accessed: row.last_accessed,
+      course_title: row.Courses ? row.Courses.title : null,
+      difficulty_level: row.Courses ? row.Courses.difficulty_level : null
+    }));
+
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -55,14 +73,24 @@ const enrollCourse = async (req, res) => {
   const { course_id } = req.body;
   if (!course_id) return res.status(400).json({ error: 'course_id wajib diisi' });
   try {
-    const pool = await poolPromise;
-    await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .input('courseId', sql.UniqueIdentifier, course_id)
-      .query(`
-        IF NOT EXISTS (SELECT 1 FROM User_Course_Progress WHERE user_id = @userId AND course_id = @courseId)
-          INSERT INTO User_Course_Progress (user_id, course_id) VALUES (@userId, @courseId)
-      `);
+    // Cek apakah sudah terdaftar
+    const { data: existing, error: checkError } = await supabase
+      .from('User_Course_Progress')
+      .select('*')
+      .eq('user_id', req.params.userId)
+      .eq('course_id', course_id)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+
+    if (!existing) {
+      const { error: insError } = await supabase
+        .from('User_Course_Progress')
+        .insert([{ user_id: req.params.userId, course_id }]);
+
+      if (insError) throw insError;
+    }
+
     res.status(201).json({ message: 'Berhasil mendaftar kursus' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -73,19 +101,17 @@ const enrollCourse = async (req, res) => {
 const updateProgress = async (req, res) => {
   const { progress_percentage, status } = req.body;
   try {
-    const pool = await poolPromise;
-    await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .input('courseId', sql.UniqueIdentifier, req.params.courseId)
-      .input('progress', sql.Int, progress_percentage)
-      .input('status', sql.VarChar, status || 'Enrolled')
-      .query(`
-        UPDATE User_Course_Progress SET
-          progress_percentage = @progress,
-          status = @status,
-          last_accessed = CURRENT_TIMESTAMP
-        WHERE user_id = @userId AND course_id = @courseId
-      `);
+    const { error } = await supabase
+      .from('User_Course_Progress')
+      .update({
+        progress_percentage: progress_percentage,
+        status: status || 'Enrolled',
+        last_accessed: new Date().toISOString()
+      })
+      .eq('user_id', req.params.userId)
+      .eq('course_id', req.params.courseId);
+
+    if (error) throw error;
     res.json({ message: 'Progress diperbarui' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -95,11 +121,13 @@ const updateProgress = async (req, res) => {
 // GET /api/academy/watched/:userId
 const getWatchedVideos = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query('SELECT video_id FROM User_Watched_Videos WHERE user_id = @userId');
-    res.json(result.recordset.map(row => row.video_id));
+    const { data, error } = await supabase
+      .from('User_Watched_Videos')
+      .select('video_id')
+      .eq('user_id', req.params.userId);
+
+    if (error) throw error;
+    res.json((data || []).map(row => row.video_id));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -110,14 +138,24 @@ const markVideoWatched = async (req, res) => {
   const { video_id } = req.body;
   if (!video_id) return res.status(400).json({ error: 'video_id wajib diisi' });
   try {
-    const pool = await poolPromise;
-    await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .input('videoId', sql.VarChar, video_id)
-      .query(`
-        IF NOT EXISTS (SELECT 1 FROM User_Watched_Videos WHERE user_id = @userId AND video_id = @videoId)
-          INSERT INTO User_Watched_Videos (user_id, video_id) VALUES (@userId, @videoId)
-      `);
+    // Cek apakah sudah ditonton
+    const { data: existing, error: checkError } = await supabase
+      .from('User_Watched_Videos')
+      .select('*')
+      .eq('user_id', req.params.userId)
+      .eq('video_id', video_id)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+
+    if (!existing) {
+      const { error: insError } = await supabase
+        .from('User_Watched_Videos')
+        .insert([{ user_id: req.params.userId, video_id }]);
+
+      if (insError) throw insError;
+    }
+
     res.json({ message: 'Video ditandai selesai' });
   } catch (err) {
     res.status(500).json({ error: err.message });

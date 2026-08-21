@@ -1,30 +1,39 @@
-const { poolPromise, sql } = require('../config/db');
+const { supabase } = require('../config/db');
 
 // GET /api/portfolio/:userId  — ambil portofolio + holdings sekaligus
 const getPortfolio = async (req, res) => {
   try {
-    const pool = await poolPromise;
-
     // Cari portfolio user
-    let portfolioRes = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query('SELECT * FROM Portfolios WHERE user_id = @userId');
+    let { data: portfolio, error: pError } = await supabase
+      .from('Portfolios')
+      .select('*')
+      .eq('user_id', req.params.userId)
+      .maybeSingle();
+
+    if (pError) throw pError;
 
     // Buat portfolio baru jika belum ada (auto-create)
-    if (!portfolioRes.recordset.length) {
-      portfolioRes = await pool.request()
-        .input('userId', sql.UniqueIdentifier, req.params.userId)
-        .query('INSERT INTO Portfolios (user_id) OUTPUT INSERTED.* VALUES (@userId)');
+    if (!portfolio) {
+      const { data: newPortfolio, error: insError } = await supabase
+        .from('Portfolios')
+        .insert([{ user_id: req.params.userId }])
+        .select()
+        .single();
+
+      if (insError) throw insError;
+      portfolio = newPortfolio;
     }
 
-    const portfolio = portfolioRes.recordset[0];
-
     // Ambil holdings
-    const holdingsRes = await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-      .query('SELECT * FROM Holdings WHERE portfolio_id = @portfolioId ORDER BY updated_at DESC');
+    const { data: holdings, error: hError } = await supabase
+      .from('Holdings')
+      .select('*')
+      .eq('portfolio_id', portfolio.id)
+      .order('updated_at', { ascending: false });
 
-    res.json({ ...portfolio, holdings: holdingsRes.recordset });
+    if (hError) throw hError;
+
+    res.json({ ...portfolio, holdings });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -39,62 +48,91 @@ const buyStock = async (req, res) => {
   const totalValue = lot_count * 100 * price_per_share;
 
   try {
-    const pool = await poolPromise;
-
     // Cek / buat portfolio
-    let pRes = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query('SELECT * FROM Portfolios WHERE user_id = @userId');
-    if (!pRes.recordset.length) {
-      pRes = await pool.request()
-        .input('userId', sql.UniqueIdentifier, req.params.userId)
-        .query('INSERT INTO Portfolios (user_id) OUTPUT INSERTED.* VALUES (@userId)');
+    let { data: portfolio, error: pError } = await supabase
+      .from('Portfolios')
+      .select('*')
+      .eq('user_id', req.params.userId)
+      .maybeSingle();
+
+    if (pError) throw pError;
+
+    if (!portfolio) {
+      const { data: newPortfolio, error: insError } = await supabase
+        .from('Portfolios')
+        .insert([{ user_id: req.params.userId }])
+        .select()
+        .single();
+
+      if (insError) throw insError;
+      portfolio = newPortfolio;
     }
-    const portfolio = pRes.recordset[0];
 
     if (portfolio.cash_balance < totalValue)
       return res.status(400).json({ error: 'Saldo tidak mencukupi' });
 
     // Kurangi saldo
-    await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-      .input('totalValue', sql.Decimal(18, 2), totalValue)
-      .query('UPDATE Portfolios SET cash_balance = cash_balance - @totalValue, updated_at = CURRENT_TIMESTAMP WHERE id = @portfolioId');
+    const { error: updPortError } = await supabase
+      .from('Portfolios')
+      .update({
+        cash_balance: portfolio.cash_balance - totalValue,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', portfolio.id);
+
+    if (updPortError) throw updPortError;
 
     // Upsert holdings (average price)
-    const holdRes = await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-      .input('symbol', sql.VarChar, stock_symbol)
-      .query('SELECT * FROM Holdings WHERE portfolio_id = @portfolioId AND stock_symbol = @symbol');
+    const { data: holding, error: holdError } = await supabase
+      .from('Holdings')
+      .select('*')
+      .eq('portfolio_id', portfolio.id)
+      .eq('stock_symbol', stock_symbol)
+      .maybeSingle();
 
-    if (holdRes.recordset.length) {
-      const existing = holdRes.recordset[0];
-      const newLots = existing.total_lots + lot_count;
-      const newAvg = ((existing.average_price * existing.total_lots * 100) + totalValue) / (newLots * 100);
-      await pool.request()
-        .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-        .input('symbol', sql.VarChar, stock_symbol)
-        .input('newLots', sql.Int, newLots)
-        .input('newAvg', sql.Decimal(18, 2), newAvg)
-        .query('UPDATE Holdings SET total_lots = @newLots, average_price = @newAvg, updated_at = CURRENT_TIMESTAMP WHERE portfolio_id = @portfolioId AND stock_symbol = @symbol');
+    if (holdError) throw holdError;
+
+    if (holding) {
+      const newLots = holding.total_lots + lot_count;
+      const newAvg = ((holding.average_price * holding.total_lots * 100) + totalValue) / (newLots * 100);
+
+      const { error: updHoldError } = await supabase
+        .from('Holdings')
+        .update({
+          total_lots: newLots,
+          average_price: newAvg,
+          updated_at: new Date().toISOString()
+        })
+        .eq('portfolio_id', portfolio.id)
+        .eq('stock_symbol', stock_symbol);
+
+      if (updHoldError) throw updHoldError;
     } else {
-      await pool.request()
-        .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-        .input('symbol', sql.VarChar, stock_symbol)
-        .input('lots', sql.Int, lot_count)
-        .input('avgPrice', sql.Decimal(18, 2), price_per_share)
-        .query('INSERT INTO Holdings (portfolio_id, stock_symbol, total_lots, average_price) VALUES (@portfolioId, @symbol, @lots, @avgPrice)');
+      const { error: insHoldError } = await supabase
+        .from('Holdings')
+        .insert([{
+          portfolio_id: portfolio.id,
+          stock_symbol,
+          total_lots: lot_count,
+          average_price: price_per_share
+        }]);
+
+      if (insHoldError) throw insHoldError;
     }
 
     // Catat transaksi
-    await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-      .input('type', sql.VarChar, 'BUY')
-      .input('symbol', sql.VarChar, stock_symbol)
-      .input('lots', sql.Int, lot_count)
-      .input('price', sql.Decimal(18, 2), price_per_share)
-      .input('total', sql.Decimal(18, 2), totalValue)
-      .query('INSERT INTO Transactions (portfolio_id, type, stock_symbol, lot_count, price_per_share, total_value) VALUES (@portfolioId, @type, @symbol, @lots, @price, @total)');
+    const { error: txError } = await supabase
+      .from('Transactions')
+      .insert([{
+        portfolio_id: portfolio.id,
+        type: 'BUY',
+        stock_symbol,
+        lot_count,
+        price_per_share,
+        total_value: totalValue
+      }]);
+
+    if (txError) throw txError;
 
     res.json({ message: `Berhasil beli ${lot_count} lot ${stock_symbol}`, total_value: totalValue });
   } catch (err) {
@@ -111,52 +149,73 @@ const sellStock = async (req, res) => {
   const totalValue = lot_count * 100 * price_per_share;
 
   try {
-    const pool = await poolPromise;
+    const { data: portfolio, error: pError } = await supabase
+      .from('Portfolios')
+      .select('*')
+      .eq('user_id', req.params.userId)
+      .maybeSingle();
 
-    const pRes = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query('SELECT * FROM Portfolios WHERE user_id = @userId');
-    if (!pRes.recordset.length) return res.status(404).json({ error: 'Portfolio tidak ditemukan' });
-    const portfolio = pRes.recordset[0];
+    if (pError) throw pError;
+    if (!portfolio) return res.status(404).json({ error: 'Portfolio tidak ditemukan' });
 
-    const holdRes = await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-      .input('symbol', sql.VarChar, stock_symbol)
-      .query('SELECT * FROM Holdings WHERE portfolio_id = @portfolioId AND stock_symbol = @symbol');
+    const { data: holding, error: holdError } = await supabase
+      .from('Holdings')
+      .select('*')
+      .eq('portfolio_id', portfolio.id)
+      .eq('stock_symbol', stock_symbol)
+      .maybeSingle();
 
-    if (!holdRes.recordset.length || holdRes.recordset[0].total_lots < lot_count)
+    if (holdError) throw holdError;
+    if (!holding || holding.total_lots < lot_count)
       return res.status(400).json({ error: 'Kepemilikan saham tidak mencukupi' });
 
-    const existing = holdRes.recordset[0];
-    const newLots = existing.total_lots - lot_count;
+    const newLots = holding.total_lots - lot_count;
 
     if (newLots === 0) {
-      await pool.request()
-        .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-        .input('symbol', sql.VarChar, stock_symbol)
-        .query('DELETE FROM Holdings WHERE portfolio_id = @portfolioId AND stock_symbol = @symbol');
+      const { error: delHoldError } = await supabase
+        .from('Holdings')
+        .delete()
+        .eq('portfolio_id', portfolio.id)
+        .eq('stock_symbol', stock_symbol);
+
+      if (delHoldError) throw delHoldError;
     } else {
-      await pool.request()
-        .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-        .input('symbol', sql.VarChar, stock_symbol)
-        .input('newLots', sql.Int, newLots)
-        .query('UPDATE Holdings SET total_lots = @newLots, updated_at = CURRENT_TIMESTAMP WHERE portfolio_id = @portfolioId AND stock_symbol = @symbol');
+      const { error: updHoldError } = await supabase
+        .from('Holdings')
+        .update({
+          total_lots: newLots,
+          updated_at: new Date().toISOString()
+        })
+        .eq('portfolio_id', portfolio.id)
+        .eq('stock_symbol', stock_symbol);
+
+      if (updHoldError) throw updHoldError;
     }
 
     // Tambah saldo
-    await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-      .input('totalValue', sql.Decimal(18, 2), totalValue)
-      .query('UPDATE Portfolios SET cash_balance = cash_balance + @totalValue, updated_at = CURRENT_TIMESTAMP WHERE id = @portfolioId');
+    const { error: updPortError } = await supabase
+      .from('Portfolios')
+      .update({
+        cash_balance: portfolio.cash_balance + totalValue,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', portfolio.id);
+
+    if (updPortError) throw updPortError;
 
     // Catat transaksi
-    await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolio.id)
-      .input('symbol', sql.VarChar, stock_symbol)
-      .input('lots', sql.Int, lot_count)
-      .input('price', sql.Decimal(18, 2), price_per_share)
-      .input('total', sql.Decimal(18, 2), totalValue)
-      .query('INSERT INTO Transactions (portfolio_id, type, stock_symbol, lot_count, price_per_share, total_value) VALUES (@portfolioId, \'SELL\', @symbol, @lots, @price, @total)');
+    const { error: txError } = await supabase
+      .from('Transactions')
+      .insert([{
+        portfolio_id: portfolio.id,
+        type: 'SELL',
+        stock_symbol,
+        lot_count,
+        price_per_share,
+        total_value: totalValue
+      }]);
+
+    if (txError) throw txError;
 
     res.json({ message: `Berhasil jual ${lot_count} lot ${stock_symbol}`, total_value: totalValue });
   } catch (err) {
@@ -167,16 +226,24 @@ const sellStock = async (req, res) => {
 // GET /api/portfolio/:userId/transactions
 const getTransactions = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const pRes = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query('SELECT id FROM Portfolios WHERE user_id = @userId');
-    if (!pRes.recordset.length) return res.json([]);
+    const { data: portfolio, error: pError } = await supabase
+      .from('Portfolios')
+      .select('id')
+      .eq('user_id', req.params.userId)
+      .maybeSingle();
 
-    const result = await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, pRes.recordset[0].id)
-      .query('SELECT * FROM Transactions WHERE portfolio_id = @portfolioId ORDER BY transaction_date DESC');
-    res.json(result.recordset);
+    if (pError) throw pError;
+    if (!portfolio) return res.json([]);
+
+    const { data: transactions, error: txError } = await supabase
+      .from('Transactions')
+      .select('*')
+      .eq('portfolio_id', portfolio.id)
+      .order('transaction_date', { ascending: false });
+
+    if (txError) throw txError;
+
+    res.json(transactions);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -185,28 +252,43 @@ const getTransactions = async (req, res) => {
 // DELETE /api/portfolio/:userId/reset
 const resetPortfolio = async (req, res) => {
   try {
-    const pool = await poolPromise;
-    const pRes = await pool.request()
-      .input('userId', sql.UniqueIdentifier, req.params.userId)
-      .query('SELECT id FROM Portfolios WHERE user_id = @userId');
-    if (!pRes.recordset.length) return res.status(404).json({ error: 'Portfolio tidak ditemukan' });
+    const { data: portfolio, error: pError } = await supabase
+      .from('Portfolios')
+      .select('id')
+      .eq('user_id', req.params.userId)
+      .maybeSingle();
+
+    if (pError) throw pError;
+    if (!portfolio) return res.status(404).json({ error: 'Portfolio tidak ditemukan' });
     
-    const portfolioId = pRes.recordset[0].id;
+    const portfolioId = portfolio.id;
 
     // Reset saldo ke 100M
-    await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolioId)
-      .query('UPDATE Portfolios SET cash_balance = 100000000.00, updated_at = CURRENT_TIMESTAMP WHERE id = @portfolioId');
+    const { error: portUpdError } = await supabase
+      .from('Portfolios')
+      .update({
+        cash_balance: 100000000.00,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', portfolioId);
+
+    if (portUpdError) throw portUpdError;
       
     // Hapus semua Holdings
-    await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolioId)
-      .query('DELETE FROM Holdings WHERE portfolio_id = @portfolioId');
+    const { error: delHoldError } = await supabase
+      .from('Holdings')
+      .delete()
+      .eq('portfolio_id', portfolioId);
+
+    if (delHoldError) throw delHoldError;
 
     // Hapus semua Transactions
-    await pool.request()
-      .input('portfolioId', sql.UniqueIdentifier, portfolioId)
-      .query('DELETE FROM Transactions WHERE portfolio_id = @portfolioId');
+    const { error: delTxError } = await supabase
+      .from('Transactions')
+      .delete()
+      .eq('portfolio_id', portfolioId);
+
+    if (delTxError) throw delTxError;
 
     res.json({ message: 'Portfolio berhasil direset' });
   } catch (err) {

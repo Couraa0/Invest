@@ -1,49 +1,18 @@
-const sql = require('mssql');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 
-// Parse ADO.NET connection string dari .env
-function parseAdoNetConnectionString(connStr) {
-  const parts = {};
-  connStr.split(';').forEach(part => {
-    const idx = part.indexOf('=');
-    if (idx > -1) {
-      const key = part.substring(0, idx).trim().toLowerCase().replace(/ /g, '');
-      const value = part.substring(idx + 1).trim();
-      parts[key] = value;
-    }
-  });
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-  const server = (parts['server'] || parts['datasource'] || '').replace('tcp:', '');
-  const [host, portStr] = server.split(',');
-  const port = parseInt(portStr || '1433', 10);
-
-  return {
-    server: host.trim(),
-    port,
-    database: parts['initialcatalog'] || parts['database'],
-    user: parts['userid'] || parts['uid'],
-    password: parts['password'] || parts['pwd'],
-    options: {
-      encrypt: true,
-      trustServerCertificate: false,
-      enableArithAbort: true,
-    },
-    connectionTimeout: 30000,
-    requestTimeout: 30000,
-  };
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Error: SUPABASE_URL atau SUPABASE_KEY tidak ditemukan di environment variables');
 }
 
-const config = parseAdoNetConnectionString(process.env.AZURE_SQL_URL || '');
+const supabase = createClient(
+  supabaseUrl || 'https://dummy.supabase.co',
+  supabaseKey || 'dummy-key'
+);
 
-const poolPromise = new sql.ConnectionPool(config)
-  .connect()
-  .then(pool => {
-    console.log('✅ Connected to Azure SQL Database');
-    return pool;
-  })
-  .catch(err => {
-    console.error('❌ Azure SQL Connection Failed:', err.message);
-    process.exit(1);
-  });
+console.log('✅ Supabase Client Initialized');
 
-module.exports = { sql, poolPromise };
+module.exports = { supabase };
