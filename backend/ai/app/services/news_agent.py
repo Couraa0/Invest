@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 
 def _call_groq(system_prompt: str, user_prompt: str, temperature: float = 0.2, max_tokens: int = 2048) -> str:
@@ -85,7 +85,7 @@ def _parse_json_response(raw: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Ticker helpers
+# Ticker helpers & company name mapping
 # ─────────────────────────────────────────────────────────────────────────────
 
 def clean_ticker(ticker: str) -> str:
@@ -93,22 +93,105 @@ def clean_ticker(ticker: str) -> str:
     return ticker.replace(".JK", "")
 
 
+# Mapping ticker → nama pendek perusahaan untuk pencarian berita yang lebih akurat
+COMPANY_SEARCH_NAMES: dict[str, list[str]] = {
+    "BBCA.JK": ["Bank BCA", "Bank Central Asia"],
+    "BMRI.JK": ["Bank Mandiri"],
+    "BBNI.JK": ["Bank BNI", "Bank Negara Indonesia"],
+    "BBRI.JK": ["Bank BRI", "Bank Rakyat Indonesia"],
+    "BRIS.JK": ["BRI Syariah", "Bank Syariah Indonesia"],
+    "BTPS.JK": ["BTPN Syariah"],
+    "ARTO.JK": ["Bank Jago"],
+    "BNGA.JK": ["CIMB Niaga"],
+    "NISP.JK": ["OCBC NISP"],
+    "BDMN.JK": ["Bank Danamon"],
+    "MEGA.JK": ["Bank Mega"],
+    "BJBR.JK": ["Bank BJB", "Bank Jabar Banten"],
+    "ADRO.JK": ["Adaro Energy"],
+    "PTBA.JK": ["Bukit Asam"],
+    "ITMG.JK": ["Indo Tambangraya"],
+    "HRUM.JK": ["Harum Energy"],
+    "BUMI.JK": ["Bumi Resources"],
+    "INDY.JK": ["Indika Energy"],
+    "MDKA.JK": ["Merdeka Copper Gold"],
+    "ANTM.JK": ["Aneka Tambang", "ANTM"],
+    "INCO.JK": ["Vale Indonesia"],
+    "MEDC.JK": ["Medco Energi"],
+    "ELSA.JK": ["Elnusa"],
+    "PGAS.JK": ["PGN", "Perusahaan Gas Negara"],
+    "ESSA.JK": ["Essa Industries"],
+    "ADMR.JK": ["Adaro Minerals"],
+    "UNVR.JK": ["Unilever Indonesia"],
+    "INDF.JK": ["Indofood"],
+    "ICBP.JK": ["Indofood CBP"],
+    "KLBF.JK": ["Kalbe Farma"],
+    "CPIN.JK": ["Charoen Pokphand"],
+    "JPFA.JK": ["Japfa Comfeed"],
+    "MYOR.JK": ["Mayora Indah"],
+    "SIDO.JK": ["Sido Muncul"],
+    "GOOD.JK": ["Garudafood"],
+    "ACES.JK": ["Ace Hardware Indonesia"],
+    "MAPI.JK": ["Mitra Adiperkasa"],
+    "ERAA.JK": ["Erajaya"],
+    "TLKM.JK": ["Telkom Indonesia", "Telkom"],
+    "EXCL.JK": ["XL Axiata"],
+    "ISAT.JK": ["Indosat Ooredoo"],
+    "TOWR.JK": ["Sarana Menara"],
+    "TBIG.JK": ["Tower Bersama"],
+    "DCII.JK": ["DCI Indonesia"],
+    "BUKA.JK": ["Bukalapak"],
+    "GOTO.JK": ["GoTo", "Gojek Tokopedia"],
+    "EMTK.JK": ["Elang Mahkota"],
+    "SCMA.JK": ["Surya Citra Media"],
+    "ASII.JK": ["Astra International", "Astra"],
+    "UNTR.JK": ["United Tractors"],
+    "AKRA.JK": ["AKR Corporindo"],
+    "SMGR.JK": ["Semen Indonesia"],
+    "INTP.JK": ["Indocement"],
+    "CTRA.JK": ["Ciputra Development", "Ciputra"],
+    "LPKR.JK": ["Lippo Karawaci"],
+    "WIKA.JK": ["Wijaya Karya", "WIKA"],
+    "WSKT.JK": ["Waskita Karya"],
+    "PTPP.JK": ["PP Persero"],
+    "BSDE.JK": ["Bumi Serpong Damai", "BSD"],
+    "SMRA.JK": ["Summarecon"],
+    "PWON.JK": ["Pakuwon Jati"],
+    "KAEF.JK": ["Kimia Farma"],
+    "MIKA.JK": ["Mitra Keluarga"],
+    "TSPC.JK": ["Tempo Scan"],
+    "JSMR.JK": ["Jasa Marga"],
+    "BIRD.JK": ["Blue Bird"],
+    "AALI.JK": ["Astra Agro Lestari"],
+    "MNCN.JK": ["MNC", "Media Nusantara Citra"],
+}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# News Scraper
+# News Scraper — Pencarian Berita Saham yang Akurat
 # ─────────────────────────────────────────────────────────────────────────────
 
 def scrape_google_news(ticker: str, lookback_days: int = 30, max_articles: int = 15) -> list:
     """
-    Scraping berita dari Google News RSS berdasarkan ticker dan periode.
+    Scraping berita dari Google News RSS berdasarkan ticker dan nama perusahaan.
+    Menggunakan beberapa query berbeda untuk hasil yang lebih lengkap dan akurat.
     """
     code = clean_ticker(ticker)
     cutoff_date = datetime.now() - timedelta(days=lookback_days)
     cutoff_aware = cutoff_date.replace(tzinfo=timezone.utc)
 
+    # Bangun query pencarian yang spesifik untuk saham ini
+    company_names = COMPANY_SEARCH_NAMES.get(ticker, [])
+    
     queries = [
-        f"saham {code} IDX",
-        f"{code} BEI emiten",
+        # Query 1: Kode saham + konteks bursa
+        f'"{code}" saham',
+        # Query 2: Kode saham + IDX
+        f"{code} IDX harga saham",
     ]
+    
+    # Query 3+: Gunakan nama perusahaan lengkap (lebih akurat)
+    for name in company_names[:2]:  # Max 2 nama perusahaan
+        queries.append(f'"{name}" saham')
 
     articles = []
     seen_titles: set = set()
@@ -166,15 +249,20 @@ def scrape_google_news(ticker: str, lookback_days: int = 30, max_articles: int =
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _filter_articles(ticker: str, articles: list) -> list:
-    """Filter artikel yang relevan dengan ticker menggunakan keyword matching."""
+    """Filter artikel yang relevan dengan ticker menggunakan keyword matching (ticker + nama perusahaan)."""
     code = clean_ticker(ticker).lower()
+    
+    # Kumpulkan semua keyword relevan: kode saham + nama perusahaan
+    keywords = [code]
+    company_names = COMPANY_SEARCH_NAMES.get(ticker, [])
+    keywords.extend([name.lower() for name in company_names])
 
     def is_relevant(article: dict) -> bool:
         text = f"{article.get('title', '')} {article.get('summary', '')}".lower()
-        return code in text
+        return any(kw in text for kw in keywords)
 
     filtered = [a for a in articles if is_relevant(a)]
-    logger.info(f"🔍 [filter] {len(articles)} → {len(filtered)} artikel relevan")
+    logger.info(f"🔍 [filter] {len(articles)} → {len(filtered)} artikel relevan (keywords: {keywords})")
 
     # Fallback: jika filter terlalu agresif
     if len(filtered) < 2 and len(articles) >= 2:
