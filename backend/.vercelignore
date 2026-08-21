@@ -1,0 +1,7 @@
+ai/
+node_modules/
+.env
+.env.example
+start-backends.bat
+logs/
+*.log
