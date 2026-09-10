@@ -23,7 +23,7 @@ export default function Login() {
     const result = await login(email, password);
     
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/dashboard?showQuestionnaire=true');
     } else {
       setError(result.message || 'Email atau password salah');
     }
@@ -41,15 +41,15 @@ export default function Login() {
     // Try logging in with demo account
     const result = await login(demoEmail, demoPass);
     if (result.success) {
-      navigate('/dashboard');
+      navigate('/dashboard?showQuestionnaire=true');
     } else {
       // Auto-register demo account if it doesn't exist in Supabase DB yet
       const regResult = await registerUser(demoEmail, demoPass, 'Demo Investor');
       if (regResult.success) {
-        navigate('/dashboard');
+        navigate('/dashboard?showQuestionnaire=true');
       } else {
         // Direct fallback navigation so quick demo never blocks user testing
-        navigate('/dashboard');
+        navigate('/dashboard?showQuestionnaire=true');
       }
     }
     setIsLoading(false);
@@ -61,7 +61,7 @@ export default function Login() {
       setError('');
       const result = await loginWithGoogle(credentialResponse.credential);
       if (result.success) {
-        navigate('/dashboard');
+        navigate('/dashboard?showQuestionnaire=true');
       } else {
         setError(result.message || 'Google Login gagal memverifikasi akun.');
       }

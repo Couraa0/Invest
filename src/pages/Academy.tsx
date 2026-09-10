@@ -23,6 +23,7 @@ import {
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import QuestionnaireModal from '../components/QuestionnaireModal';
 import { useUser } from '../context/UserContext';
 
 // ─── Data ───────────────────────────────────────────────────────────────────
@@ -815,12 +816,13 @@ function ModuleCard({ module, index, onPlay, watchedVideos }: {
 export default function Academy() {
   type InvestorLevel = 'Pemula' | 'Menengah' | 'Berpengalaman';
   
-  const { investorLevel: userLevel, user, updateProfile } = useUser();
+  const { investorLevel: userLevel, user, completeOnboarding } = useUser();
   const [activeLevel, setActiveLevel] = useState<InvestorLevel>('Pemula');
   const [activeVideo, setActiveVideo] = useState<Curriculum | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<string[]>([]);
   const [isMarking, setIsMarking] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isQuestionnaireOpen, setIsQuestionnaireOpen] = useState(false);
 
   useEffect(() => {
     if (userLevel) {
@@ -880,12 +882,7 @@ export default function Academy() {
   const handleSetDefaultLevel = async () => {
     setIsUpdatingProfile(true);
     try {
-      let risk_profile = 'Moderat';
-      if (activeLevel === 'Pemula') risk_profile = 'Konservatif';
-      else if (activeLevel === 'Menengah') risk_profile = 'Moderat';
-      else if (activeLevel === 'Berpengalaman') risk_profile = 'Agresif';
-      
-      await updateProfile({ risk_profile });
+      await completeOnboarding(activeLevel);
     } catch (e) {
       console.error('Failed to update profile level', e);
     } finally {
@@ -895,6 +892,11 @@ export default function Academy() {
 
   return (
     <>
+      <QuestionnaireModal
+        isOpen={isQuestionnaireOpen}
+        onClose={() => setIsQuestionnaireOpen(false)}
+        isDismissable={true}
+      />
       {/* Video Modal */}
       {activeVideo && (
         <VideoModal
@@ -915,8 +917,18 @@ export default function Academy() {
           className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
         >
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/8 border border-secondary/12 text-secondary text-[10px] font-semibold uppercase tracking-wider mb-2">
-              <GraduationCap className="w-3 h-3" /> Learning Journey
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/8 border border-secondary/12 text-secondary text-[10px] font-semibold uppercase tracking-wider mb-2">
+                <GraduationCap className="w-3 h-3" /> Learning Journey
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuestionnaireOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+              >
+                <Star className="w-3 h-3 fill-emerald-600 text-emerald-600" />
+                <span>Kuesioner Level</span>
+              </button>
             </div>
             <h1 className="text-2xl font-bold text-primary tracking-tight">InvestAI Academy</h1>
             <p className="text-sm text-on-surface-variant/60 mt-1 max-w-lg">

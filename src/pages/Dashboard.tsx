@@ -14,9 +14,10 @@ import {
   BarChart2,
   RefreshCw,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useUser } from '../context/UserContext';
+import QuestionnaireModal from '../components/QuestionnaireModal';
 import StockIcon from '../components/StockIcon';
 import {
   AreaChart,
@@ -87,7 +88,8 @@ function WatchlistSkeleton() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { investorLevel } = useUser();
+  const { investorLevel, hasCompletedOnboarding } = useUser();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const profileMapping: Record<string, { label: string; badge: string; risk: string; emoji: string }> = {
     'Pemula': { label: 'Investor Pemula', badge: 'Pemula', risk: 'Aman & Terukur', emoji: '🌱' },
@@ -99,6 +101,7 @@ export default function Dashboard() {
 
   // ── State ─────────────────────────────────────────────────────────────────
 
+  const [isQuestionnaireOpen, setIsQuestionnaireOpen] = useState(false);
   const [watchlist, setWatchlist] = useState<StockData[]>([]);
   const [market, setMarket] = useState<MarketData | null>(null);
   const [loadingStocks, setLoadingStocks] = useState(true);
@@ -106,6 +109,20 @@ export default function Dashboard() {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [marketStatus, setMarketStatus] = useState({ isOpen: false, text: 'Checking...' });
+
+  useEffect(() => {
+    if (!hasCompletedOnboarding || searchParams.get('showQuestionnaire') === 'true') {
+      setIsQuestionnaireOpen(true);
+    }
+  }, [hasCompletedOnboarding, searchParams]);
+
+  const handleCloseQuestionnaire = () => {
+    setIsQuestionnaireOpen(false);
+    if (searchParams.get('showQuestionnaire')) {
+      searchParams.delete('showQuestionnaire');
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
 
   // ── Fetch Functions ──────────────────────────────────────────────────────
 
@@ -230,6 +247,13 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Questionnaire Modal */}
+      <QuestionnaireModal
+        isOpen={isQuestionnaireOpen}
+        onClose={handleCloseQuestionnaire}
+        isDismissable={hasCompletedOnboarding}
+      />
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -240,12 +264,19 @@ export default function Dashboard() {
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-primary tracking-tight">Selamat Datang {currentProfile.emoji}</h1>
-            <span className="px-2.5 py-0.5 bg-primary/8 text-primary text-[10px] font-semibold uppercase tracking-wider rounded-full border border-primary/12 whitespace-nowrap">
-              {currentProfile.badge}
-            </span>
+            <button
+              type="button"
+              onClick={() => setIsQuestionnaireOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/8 hover:bg-primary/15 text-primary text-xs font-bold rounded-full border border-primary/15 transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+              title="Klik untuk mengubah tingkat pemahaman investor"
+            >
+              <span>{currentProfile.badge}</span>
+              <Sparkles className="w-3 h-3 text-emerald-600" />
+              <span className="text-[10px] text-slate-500 font-medium underline">Ubah Level</span>
+            </button>
           </div>
           <p className="text-sm text-on-surface-variant/60">
-            Strategi investasimu terlihat stabil hari ini.
+            Profil risiko diset sebagai <strong className="text-primary font-semibold">{currentProfile.risk}</strong>.
             {lastUpdated && (
               <span className="ml-2 text-secondary font-semibold text-xs">
                 Data real-time · {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
